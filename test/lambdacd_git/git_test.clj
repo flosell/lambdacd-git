@@ -32,8 +32,23 @@
   (let [new-hash (s/trim (git git-handle "rev-parse" "HEAD"))]
     (update git-handle :commits #(conj % new-hash))))
 
+(defn git-checkout-b [git-handle new-branch]
+  (git git-handle "checkout" "-b" new-branch)
+  git-handle)
+
+(defn git-checkout [git-handle branch]
+  (git git-handle "checkout" branch)
+  git-handle)
+
 (deftest get-head-hash-test
   (testing "that it can get the head of the master branch"
     (let [git-handle (-> (git-init)
                          (git-commit "some commit"))]
-      (is (= (first (:commits git-handle)) (get-head-hash (:remote git-handle) "master"))))))
+      (is (= (first (:commits git-handle)) (get-head-hash (:remote git-handle) "master")))))
+  (testing "that it can get the head of a different branch"
+    (let [git-handle (-> (git-init)
+                         (git-commit "some commit on master")
+                         (git-checkout-b "some-branch")
+                         (git-commit "some commit on branch")
+                         (git-checkout "master"))]
+      (is (= (second (:commits git-handle)) (get-head-hash (:remote git-handle) "some-branch"))))))

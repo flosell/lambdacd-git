@@ -12,5 +12,5 @@
       (.setHeads true)
       (.setRemote remote)
       (.callAsMap)
-      (get "refs/heads/master")
+      (get (str "refs/heads/" branch))
       (ref->hash)))
