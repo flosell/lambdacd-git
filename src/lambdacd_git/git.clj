@@ -7,7 +7,7 @@
       (.getObjectId)
       (.name)))
 
-(defn get-head-hash [remote branch]
+(defn current-revision [remote branch]
   (-> (Git/lsRemoteRepository)
       (.setHeads true)
       (.setRemote remote)

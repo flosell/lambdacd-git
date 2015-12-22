@@ -1,54 +1,18 @@
 (ns lambdacd-git.git-test
   (:require [clojure.test :refer :all]
-            [me.raynes.conch :refer [let-programs]]
-            [clojure.string :as s]
-            [clojure.java.io :as io]
-            [lambdacd-git.git :refer :all])
-  (:import (java.nio.file Files)
-           (java.nio.file.attribute FileAttribute)))
+            [lambdacd-git.git-utils :refer [git-init git-commit git-checkout-b git-checkout]]
+            [lambdacd-git.git :refer :all]))
 
 
-(defn git [git-handle & args]
-  (let [theargs (concat args [{:dir (:dir git-handle)}])]
-    (let-programs [git "/usr/bin/git"]
-                  (apply git theargs))))
-
-(defn no-file-attributes []
-  (into-array FileAttribute []))
-
-(defn- create-temp-dir []
-  (str (Files/createTempDirectory "lambdacd-git" (no-file-attributes))))
-
-(defn- git-init []
-  (let [dir (create-temp-dir)
-        git-handle {:dir dir
-                    :remote (str "file://" dir)
-                    :commits []}]
-    (git git-handle "init")
-    git-handle))
-
-(defn- git-commit [git-handle msg]
-  (git git-handle "commit" "-m" msg "--allow-empty")
-  (let [new-hash (s/trim (git git-handle "rev-parse" "HEAD"))]
-    (update git-handle :commits #(conj % new-hash))))
-
-(defn git-checkout-b [git-handle new-branch]
-  (git git-handle "checkout" "-b" new-branch)
-  git-handle)
-
-(defn git-checkout [git-handle branch]
-  (git git-handle "checkout" branch)
-  git-handle)
-
-(deftest get-head-hash-test
+(deftest current-revision-test
   (testing "that it can get the head of the master branch"
     (let [git-handle (-> (git-init)
                          (git-commit "some commit"))]
-      (is (= (first (:commits git-handle)) (get-head-hash (:remote git-handle) "master")))))
+      (is (= (first (:commits git-handle)) (current-revision (:remote git-handle) "master")))))
   (testing "that it can get the head of a different branch"
     (let [git-handle (-> (git-init)
                          (git-commit "some commit on master")
                          (git-checkout-b "some-branch")
                          (git-commit "some commit on branch")
                          (git-checkout "master"))]
-      (is (= (second (:commits git-handle)) (get-head-hash (:remote git-handle) "some-branch"))))))
+      (is (= (second (:commits git-handle)) (current-revision (:remote git-handle) "some-branch"))))))
