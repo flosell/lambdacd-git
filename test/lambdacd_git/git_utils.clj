@@ -23,16 +23,24 @@
         git-handle {:dir dir
                     :remote (str "file://" dir)
                     :commits []
-                    :commits-by-msg {}}]
+                    :commits-by-msg {}
+                    :staged-file-content nil}]
     (git git-handle "init")
     git-handle))
 
+(defn git-add-file [git-handle file-name file-content]
+  (spit (io/file (:dir git-handle) file-name) file-content)
+  (git git-handle "add" "-A")
+  (assoc git-handle :staged-file-content file-content))
+
 (defn git-commit [git-handle msg]
-  (git git-handle "commit" "-m" msg "--allow-empty")
-  (let [new-hash (s/trim (git git-handle "rev-parse" "HEAD"))]
+  (git git-handle   "commit" "-m" msg "--allow-empty")
+  (let [new-hash    (s/trim (git git-handle "rev-parse" "HEAD"))
+        commit-desc {:hash new-hash :file-content (:staged-file-content git-handle)}]
     (-> git-handle
-        (update :commits #(conj % new-hash))
-        (update :commits-by-msg #(assoc % msg new-hash)))))
+        (update :commits #(conj % commit-desc))
+        (update :commits-by-msg #(assoc % msg commit-desc))
+        (assoc :staged-file-content nil))))
 
 (defn git-checkout-b [git-handle new-branch]
   (git git-handle "checkout" "-b" new-branch)

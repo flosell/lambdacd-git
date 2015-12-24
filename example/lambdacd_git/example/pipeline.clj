@@ -9,15 +9,30 @@
             [lambdacd.ui.ui-server :as ui]
             [lambdacd-git.core :as lambdacd-git-core]
             [lambdacd.runners :as runners]
-            [lambdacd-git.ssh-agent-support :as ssh-agent-support]))
+            [lambdacd-git.ssh-agent-support :as ssh-agent-support]
+            [lambdacd-git.git :as git]))
+
+; TODO: namespace inconsistency? with-workspace from core, clone from git
+
+(def repo "git@github.com:flosell/lambdacd")
+(def branch "master")
 
 (defn wait-for-git [args ctx]
-  (lambdacd-git-core/wait-for-git ctx "git@github.com:flosell/testrepo" "master" :ms-between-polls 1000))
+  (lambdacd-git-core/wait-for-git ctx repo branch :ms-between-polls 1000))
 
-(def pipeline-structure `(
- (either
-   wait-for-manual-trigger
-   wait-for-git)))
+(defn clone [args ctx]
+  (git/clone ctx repo branch (:cwd args)))
+
+(defn ls [args ctx]
+  (shell/bash ctx (:cwd args) "ls"))
+
+(def pipeline-structure
+  `((either
+      wait-for-manual-trigger
+      wait-for-git)
+     (with-workspace
+       clone
+       ls)))
 
 (defn -main [& args]
   (let [home-dir (util/create-temp-dir)
