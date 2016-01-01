@@ -1,6 +1,6 @@
 (ns lambdacd-git.git-test
   (:require [clojure.test :refer :all]
-            [lambdacd-git.git-utils :refer [git-init git-add-file git-commit git-checkout-b git-checkout]]
+            [lambdacd-git.git-utils :refer [git-init git-add-file git-commit git-checkout-b git-checkout commit-by-msg]]
             [lambdacd-git.git :refer :all]
             [lambdacd.util :as util]
             [lambdacd-git.old-utils :refer [some-ctx]]
@@ -69,3 +69,19 @@
       (is (str-containing "Could not find ref some-ref" (:out clone-result)))
       (is (= "some content"
              (slurp (io/file workspace "some-file")))))))
+
+(deftest commit-details-test
+  (testing "that it returns the commits between two hashes excluding the first and including the last"
+    (let [git-handle (-> (git-init)
+                         (git-commit "first commit")
+                         (git-commit "second commit")
+                         (git-commit "third commit"))
+          first-commit (commit-by-msg git-handle "first commit")
+          second-commit (commit-by-msg git-handle "second commit")
+          third-commit (commit-by-msg git-handle "third commit")
+          workspace (:dir git-handle)]
+      (is (= [{:hash second-commit
+               :msg  "second commit"}
+              {:hash third-commit
+               :msg  "third commit"}]
+             (commits-between workspace first-commit third-commit))))))

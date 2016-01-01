@@ -2,8 +2,9 @@
   (:require [clojure.java.io :as io]
             [lambdacd.steps.support :as support])
   (:import (org.eclipse.jgit.api Git)
-           (org.eclipse.jgit.lib Ref TextProgressMonitor)
-           (java.io PrintWriter)))
+           (org.eclipse.jgit.lib Ref TextProgressMonitor AnyObjectId)
+           (java.io PrintWriter)
+           (org.eclipse.jgit.revwalk RevCommit)))
 
 (defn- ref->hash [^Ref ref]
   (-> ref
@@ -18,10 +19,14 @@
       (get (str "refs/heads/" branch))
       (ref->hash)))
 
-(defn- ref-exists? [git ref]
+(defn resolve-object [git s]
   (-> git
       (.getRepository)
-      (.resolve ref)
+      (.resolve s)))
+
+(defn- ref-exists? [git ref]
+  (-> git
+      (resolve-object ref)
       (nil?)
       (not)))
 
@@ -62,3 +67,21 @@
                               (do
                                 (println "Failure: Could not find ref" ref)
                                 {:status :failure})))))
+
+(defn- process-commit [^RevCommit ref]
+  (let [hash (-> ref
+                 (.getId)
+                 (.name))
+        msg (-> ref
+                (.getShortMessage))]
+    {:hash hash
+     :msg  msg}))
+
+
+(defn commits-between [workspace from-hash to-hash]
+  (let [git (Git/open (io/file workspace))
+        refs (-> git
+                 (.log)
+                 (.addRange (resolve-object git from-hash) (resolve-object git to-hash))
+                 (.call))]
+    (map process-commit (reverse refs))))

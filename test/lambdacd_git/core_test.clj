@@ -65,7 +65,7 @@
   state)
 
 (defn commit-hash-by-msg [state msg]
-  (get-in @state [:git :commits-by-msg msg :hash]))
+  (git-utils/commit-by-msg (:git @state) msg))
 
 (defn wait-for-git-result [state]
   (:wait-for-git-result @state))

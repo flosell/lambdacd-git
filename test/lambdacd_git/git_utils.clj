@@ -49,3 +49,6 @@
 (defn git-checkout [git-handle branch]
   (git git-handle "checkout" branch)
   git-handle)
+
+(defn commit-by-msg [git-handle msg]
+  (get-in git-handle [:commits-by-msg msg :hash]))
