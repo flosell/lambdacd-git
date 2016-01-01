@@ -5,9 +5,11 @@ the the core library.
 
 ## Status
 
-[![Build Status](https://travis-ci.org/flosell/lambdacd-cctray.svg)](https://travis-ci.org/flosell/lambdacd-git)
+[![Build Status](https://travis-ci.org/flosell/lambdacd-git.svg)](https://travis-ci.org/flosell/lambdacd-git)
 
-[![Clojars Project](http://clojars.org/lambdacd-cctray/latest-version.svg)](http://clojars.org/lambdacd-git)
+[![Clojars Project](http://clojars.org/lambdacd-git/latest-version.svg)](http://clojars.org/lambdacd-git)
+
+This library is under development and no stable version has been released yet. 
 
 ## Usage
 
