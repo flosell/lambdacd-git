@@ -53,6 +53,17 @@
     (swap! state #(assoc % :result-channel wait-for-result-channel))
     state))
 
+(defn start-changed-commits-step [state cwd old-revision new-revision]
+  (let [wait-for-result-channel (async/go
+                                  (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
+                                                                                        (fn [args ctx]
+                                                                                          (changed-commits {:cwd cwd
+                                                                                                            :old-revision old-revision
+                                                                                                            :revision new-revision} ctx)))]
+                                    (first (vals (:outputs execute-step-result)))))]
+    (swap! state #(assoc % :result-channel wait-for-result-channel))
+    state))
+
 (defn read-channel-or-time-out [c & {:keys [timeout]
                            :or             {timeout 10000}}]
   (async/alt!!
@@ -122,7 +133,7 @@
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
       (is (= (commit-hash-by-msg state "other commit") (:old-revision (step-result state))))
-      (is (= (commit-hash-by-msg state "commit while not waiting") (:revision     (step-result state))))))
+      (is (= (commit-hash-by-msg state "commit while not waiting") (:revision (step-result state))))))
   (testing "that wait-for can be killed and that the last seen revision is being kept"
     (let [state (-> (init-state)
                     (git-init)
@@ -186,3 +197,61 @@
           (get-step-result))
       (is (= :failure (:status (step-result state))))
       (is (str-containing "Could not find ref some-ref" (:out (step-result state)))))))
+
+(deftest changed-commits-test
+  (testing "normal behavior"
+    (let [state (init-state)
+          workspace (util/create-temp-dir)]
+      (-> state
+          (git-init)
+          (git-commit "first commit")
+          (git-commit "second commit")
+          (git-commit "third commit")
+          (start-clone-step "master" workspace)
+          (wait-for-step-to-complete)
+          (start-changed-commits-step workspace (commit-hash-by-msg state "first commit") (commit-hash-by-msg state "third commit"))
+          (get-step-result))
+      (testing "that it returns the changed commits"
+        (is (= [{:hash (commit-hash-by-msg state "second commit")
+                 :msg  "second commit"}
+                {:hash (commit-hash-by-msg state "third commit")
+                 :msg  "third commit"}] (:commits (step-result state)))))
+      (testing "that it is successful"
+        (is (= :success
+               (:status (step-result state)))))
+      (testing "that it outputs the commits messages"
+        (is (str-containing "second commit" (:out (step-result state))))
+        (is (str-containing "third commit" (:out (step-result state)))))
+      (testing "that it outputs the commit hashes"
+        (is (str-containing (commit-hash-by-msg state "second commit") (:out (step-result state))))
+        (is (str-containing (commit-hash-by-msg state "third commit") (:out (step-result state)))))))
+  (testing "error handling"
+    (testing "that an error is reported if no cwd is set"
+      (let [state (init-state)]
+        (-> state
+            (start-changed-commits-step nil "some hash" "some other hash")
+            (get-step-result))
+        (is (str-containing "No working directory" (:out (step-result state))))
+        (is (= :failure (:status (step-result state))))))
+    (testing "that an error is reported if no git repo is found in cwd"
+      (let [state (init-state)
+            workspace (util/create-temp-dir)]
+        (-> state
+            (start-changed-commits-step workspace "some hash" "some other hash")
+            (get-step-result))
+        (is (str-containing "No .git directory" (:out (step-result state))))
+        (is (= :failure (:status (step-result state))))))
+    (testing "that the current head commit will be reported if no old and new revisions are set"
+      (let [state (init-state)
+            workspace (util/create-temp-dir)]
+        (-> state
+            (git-init)
+            (git-commit "some commit")
+            (start-clone-step "HEAD" workspace)
+            (wait-for-step-to-complete)
+            (start-changed-commits-step workspace nil nil)
+            (get-step-result))
+        (is (str-containing "Current HEAD" (:out (step-result state))))
+        (is (str-containing (commit-hash-by-msg state "some commit") (:out (step-result state))))
+        (is (= :success (:status (step-result state)))))
+      )))

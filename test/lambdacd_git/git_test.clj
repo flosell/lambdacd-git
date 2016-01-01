@@ -6,16 +6,10 @@
             [lambdacd-git.old-utils :refer [some-ctx]]
             [lambdacd-git.test-utils :refer [str-containing]]
             [clojure.java.io :as io])
-  (:import (org.eclipse.jgit.api Git)
-           (org.eclipse.jgit.lib Repository BaseRepositoryBuilder RepositoryBuilder)))
+  (:import (org.eclipse.jgit.api Git)))
 
 (defn git-from-dir [git-dir]
-  (-> (RepositoryBuilder.)
-      (.setGitDir (io/file git-dir ".git"))
-      (.readEnvironment)
-      (.build)
-      (Git.)))
-
+  (Git/open (io/file git-dir)))
 
 (deftest current-revision-test
   (testing "that it can get the head of the master branch"
@@ -80,3 +74,17 @@
               {:hash third-commit
                :msg  "third commit"}]
              (commits-between workspace first-commit third-commit))))))
+
+(deftest get-single-commit-test
+  (testing "that we can get commit information for a specific commit"
+    (let [git-handle (-> (git-init)
+                         (git-commit "some commit"))]
+      (is (= {:hash (commit-by-msg git-handle "some commit")
+              :msg "some commit"}
+             (get-single-commit (:dir git-handle) (commit-by-msg git-handle "some commit"))))))
+  (testing "that we can get commit information for the HEAD commit"
+    (let [git-handle (-> (git-init)
+                         (git-commit "some commit"))]
+      (is (= {:hash (commit-by-msg git-handle "some commit")
+              :msg "some commit"}
+             (get-single-commit (:dir git-handle) "HEAD"))))))

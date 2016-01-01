@@ -4,7 +4,7 @@
   (:import (org.eclipse.jgit.api Git)
            (org.eclipse.jgit.lib Ref TextProgressMonitor AnyObjectId)
            (java.io PrintWriter)
-           (org.eclipse.jgit.revwalk RevCommit)))
+           (org.eclipse.jgit.revwalk RevCommit RevWalk)))
 
 (defn- ref->hash [^Ref ref]
   (-> ref
@@ -65,11 +65,21 @@
     {:hash hash
      :msg  msg}))
 
+(defn- ^Git git-open [workspace]
+  (Git/open (io/file workspace)))
 
 (defn commits-between [workspace from-hash to-hash]
-  (let [git (Git/open (io/file workspace))
+  (let [git (git-open workspace)
         refs (-> git
                  (.log)
                  (.addRange (resolve-object git from-hash) (resolve-object git to-hash))
                  (.call))]
     (map process-commit (reverse refs))))
+
+(defn get-single-commit [workspace hash]
+  (let [git (git-open workspace)]
+    (-> git
+        (.getRepository)
+        (RevWalk.)
+        (.parseCommit (resolve-object git hash))
+        (process-commit))))

@@ -4,7 +4,8 @@
             [clojure.tools.logging :as log]
             [lambdacd.steps.support :as support]
             [lambdacd.presentation.pipeline-state :as pipeline-state]
-            [lambdacd-git.git :as git]))
+            [lambdacd-git.git :as git]
+            [clojure.java.io :as io]))
 
 (defn report-git-exception [branch repo-uri e]
   (log/warn e (str "could not get current revision for branch " branch " on " repo-uri))
@@ -69,3 +70,32 @@
                               (do
                                 (println "Failure: Could not find ref" ref)
                                 {:status :failure})))))
+
+(defn- print-commit [commit]
+  (println (:hash commit) "|" (:msg commit)))
+
+(defn- output-commits [commits]
+  (doall
+    (map print-commit commits))
+  {:status :success
+   :commits commits})
+
+(defn- failure [msg]
+  {:status :failure :out msg})
+
+(defn no-git-repo? [cwd]
+  (not (.exists (io/file cwd ".git"))))
+
+(defn changed-commits [args ctx]
+  (support/capture-output ctx
+    (let [old-revision (:old-revision args)
+          new-revision (:revision args)
+          cwd (:cwd args)]
+      (cond
+        (nil? cwd) (failure "No working directory (:cwd) defined. Did you clone the repository?")
+        (no-git-repo? cwd) (failure "No .git directory found in working directory. Did you clone the repository?")
+        (or (nil? old-revision) (nil? new-revision)) (do
+                                                       (println "No old or current revision found.")
+                                                       (println "Current HEAD:")
+                                                       (output-commits [(git/get-single-commit cwd "HEAD")]))
+        :else (output-commits (git/commits-between cwd old-revision new-revision))))))

@@ -51,4 +51,6 @@
   git-handle)
 
 (defn commit-by-msg [git-handle msg]
-  (get-in git-handle [:commits-by-msg msg :hash]))
+  (or
+    (get-in git-handle [:commits-by-msg msg :hash])
+    (throw (Exception. (str "no hash found for " msg)))))

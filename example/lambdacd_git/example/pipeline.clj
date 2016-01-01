@@ -13,7 +13,7 @@
 
 ; TODO: namespace inconsistency? with-workspace from core, clone from git
 
-(def repo "git@github.com:flosell/lambdacd")
+(def repo "git@github.com:flosell/testrepo")
 (def branch "master")
 
 (defn wait-for-git [args ctx]
@@ -31,6 +31,8 @@
       wait-for-git)
      (with-workspace
        clone
+       core/changed-commits
+
        ls)))
 
 (defn -main [& args]
