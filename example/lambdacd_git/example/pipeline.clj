@@ -11,8 +11,6 @@
             [lambdacd.runners :as runners]
             [lambdacd-git.ssh-agent-support :as ssh-agent-support]))
 
-; TODO: namespace inconsistency? with-workspace from core, clone from git
-
 (def repo "git@github.com:flosell/testrepo")
 (def branch "master")
 
