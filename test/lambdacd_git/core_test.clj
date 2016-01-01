@@ -6,7 +6,9 @@
             [clojure.core.async :as async]
             [lambdacd.internal.pipeline-state :as pipeline-state]
             [lambdacd-git.test-utils :refer [str-containing]]
-            [lambdacd.core :as lambdacd-core]))
+            [lambdacd.core :as lambdacd-core]
+            [lambdacd.util :as util]
+            [clojure.java.io :as io]))
 
 (defn init-state []
   (let [is-killed (atom false)
@@ -28,11 +30,25 @@
                          (git-utils/git-commit (:git %) msg)))
   state)
 
+(defn git-add-file [state file-name file-content]
+  (swap! state #(assoc % :git
+                         (git-utils/git-add-file (:git %) file-name file-content)))
+  state)
+
 (defn start-wait-for-git-step [state]
   (let [wait-for-result-channel (async/go
                                   (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
                                                                                         (fn [args ctx]
                                                                                           (wait-for-git ctx (get-in @state [:git :remote]) "master" :ms-between-polls 100)))]
+                                    (first (vals (:outputs execute-step-result)))))]
+    (swap! state #(assoc % :wait-for-result-channel wait-for-result-channel))
+    state))
+
+(defn start-clone-step [state ref cwd]
+  (let [wait-for-result-channel (async/go
+                                  (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
+                                                                                        (fn [args ctx]
+                                                                                          (clone ctx (get-in @state [:git :remote]) ref cwd)))]
                                     (first (vals (:outputs execute-step-result)))))]
     (swap! state #(assoc % :wait-for-result-channel wait-for-result-channel))
     state))
@@ -69,8 +85,6 @@
 
 (defn wait-for-git-result [state]
   (:wait-for-git-result @state))
-
-
 
 (deftest wait-for-git-test-clean
   (testing "that it waits for a new commit to happen and that it prints out information on old and new commit hashes"
@@ -135,3 +149,40 @@
                     (kill-waiting-step)
                     (get-step-result))]
       (is (str-containing "some-uri-that-doesnt-exist" (:out (wait-for-git-result state)))))))
+
+(deftest clone-test
+  (testing "that we can clone a specific commit"
+    (let [state (init-state)
+          workspace (util/create-temp-dir)]
+      (-> state
+          (git-init)
+          (git-add-file "some-file" "some content")
+          (git-commit "first commit")
+          (git-add-file "some-file" "some other content")
+          (git-commit "second commit")
+          (start-clone-step (commit-hash-by-msg state "first commit") workspace)
+          (get-step-result))
+      (is (= :success (:status (wait-for-git-result state))))
+      (is (= "some content"
+             (slurp (io/file workspace "some-file"))))))
+  (testing "that we can get information on the progress of a clone"
+    (let [state (init-state)
+          workspace (util/create-temp-dir)]
+      (-> state
+          (git-init)
+          (git-add-file "some-file" "some content")
+          (git-commit "some commit")
+          (start-clone-step (commit-hash-by-msg state "some commit") workspace)
+          (get-step-result))
+      (is (str-containing "Receiving" (:out (wait-for-git-result state))))))
+  (testing "that we get a proper error if a commit cant be found"
+    (let [state (init-state)
+          workspace (util/create-temp-dir)]
+      (-> state
+          (git-init)
+          (git-add-file "some-file" "some content")
+          (git-commit "some commit")
+          (start-clone-step "some-ref" workspace)
+          (get-step-result))
+      (is (= :failure (:status (wait-for-git-result state))))
+      (is (str-containing "Could not find ref some-ref" (:out (wait-for-git-result state)))))))

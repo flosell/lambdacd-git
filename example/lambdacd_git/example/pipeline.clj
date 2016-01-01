@@ -7,10 +7,9 @@
             [ring.server.standalone :as ring-server]
             [lambdacd.util :as util]
             [lambdacd.ui.ui-server :as ui]
-            [lambdacd-git.core :as lambdacd-git-core]
+            [lambdacd-git.core :as core]
             [lambdacd.runners :as runners]
-            [lambdacd-git.ssh-agent-support :as ssh-agent-support]
-            [lambdacd-git.git :as git]))
+            [lambdacd-git.ssh-agent-support :as ssh-agent-support]))
 
 ; TODO: namespace inconsistency? with-workspace from core, clone from git
 
@@ -18,10 +17,10 @@
 (def branch "master")
 
 (defn wait-for-git [args ctx]
-  (lambdacd-git-core/wait-for-git ctx repo branch :ms-between-polls 1000))
+  (core/wait-for-git ctx repo branch :ms-between-polls 1000))
 
 (defn clone [args ctx]
-  (git/clone ctx repo branch (:cwd args)))
+  (core/clone ctx repo branch (:cwd args)))
 
 (defn ls [args ctx]
   (shell/bash ctx (:cwd args) "ls"))

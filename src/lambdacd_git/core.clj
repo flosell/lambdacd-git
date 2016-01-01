@@ -57,3 +57,15 @@
     (let [last-seen-revision (last-seen-revision-for-this-step ctx repo-uri branch)
           wait-for-result (wait-for-revision-changed-from last-seen-revision repo-uri branch ctx ms-between-polls)]
       (persist-last-seen-revision wait-for-result last-seen-revision ctx))))
+
+(defn clone [ctx repo ref cwd]
+  (support/capture-output ctx
+                          (let [git (git/clone-repo repo cwd)
+                                existing-ref (git/find-ref git ref)]
+                            (if existing-ref
+                              (do
+                                (git/checkout-ref git existing-ref)
+                                {:status :success})
+                              (do
+                                (println "Failure: Could not find ref" ref)
+                                {:status :failure})))))
