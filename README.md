@@ -20,9 +20,9 @@ This library is under development and no stable version has been released yet.
 (:require [lambdacd-git.lambdacd-git :as lambdacd-git])
 ```
 
-### Example Pipeline
+### Complete Example
 
-You'll find a full example here: https://github.com/flosell/lambdacd-git/blob/master/example/lambdacd_git/example/pipeline.clj
+You'll find a complete example here: https://github.com/flosell/lambdacd-git/blob/master/example/lambdacd_git/example/simple_pipeline.clj
 
 ### Waiting for a commit
 
@@ -59,6 +59,28 @@ You'll find a full example here: https://github.com/flosell/lambdacd-git/blob/ma
       lambdacd-git/list-changes
       do-something)))
 ```
+
+## Working with more than one repository
+
+You can have clone steps that clone into different subdirectories: 
+
+```clojure
+(defn clone-foo [args ctx]
+  (core/clone ctx repo branch (str (:cwd args) "/" "foo")))
+(defn clone-bar [args ctx]
+  (core/clone ctx repo branch (str (:cwd args) "/" "bar")))
+
+(def pipeline-structure
+  `(; ... 
+    (with-workspace
+      clone-foo
+      clone-bar
+      do-something)))
+```
+
+If you want to use this in combination with `wait-for-git`, you need to detect which commit to use. For details, see
+https://github.com/flosell/lambdacd-git/blob/master/example/lambdacd_git/example/multi_repo_pipeline.clj
+
 
 ## Development
 

@@ -1,4 +1,4 @@
-(ns lambdacd-git.example.pipeline
+(ns lambdacd-git.example.simple-pipeline
   (:use [compojure.core]
         [lambdacd.steps.control-flow])
   (:require [lambdacd.steps.shell :as shell]

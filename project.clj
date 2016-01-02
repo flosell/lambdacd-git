@@ -10,8 +10,9 @@
                  [com.jcraft/jsch.agentproxy.sshagent "0.0.8"]
                  [me.raynes/conch "0.8.0"]
                  [lambdacd "0.6.1-SNAPSHOT"]]
+  :offline? true
   :repositories {"jgit-repository" "https://repo.eclipse.org/content/groups/releases/"}
   :test-paths ["test" "example"]
-  :profiles {:dev      {:main         lambdacd-git.example.pipeline
+  :profiles {:dev      {:main         lambdacd-git.example.simple-pipeline
                         :dependencies [[compojure "1.1.8"]
                                        [ring-server "0.3.1"]]}})
