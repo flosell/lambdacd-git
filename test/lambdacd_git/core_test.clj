@@ -120,9 +120,11 @@
                     (git-commit "other commit")
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
+      (is (= "refs/heads/master" (:changed-ref (step-result state))))
       (is (= (commit-hash-by-msg state "initial commit") (:old-revision (step-result state))))
-      (is (= (commit-hash-by-msg state "other commit") (:revision     (step-result state))))
-      (is (str-containing (commit-hash-by-msg state "initial commit") (:out (step-result state))))))
+      (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))
+      (is (str-containing (commit-hash-by-msg state "initial commit") (:out (step-result state))))
+      (is (str-containing "on refs/heads/master" (:out (step-result state))))))
   (testing "that we can pass a function to filter branches we want to react on"
     (let [state (-> (init-state)
                     (git-init)
