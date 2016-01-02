@@ -22,7 +22,7 @@ This library is under development and no stable version has been released yet.
 
 ### Complete Example
 
-You'll find a complete example here: https://github.com/flosell/lambdacd-git/blob/master/example/lambdacd_git/example/simple_pipeline.clj
+You'll find a complete example here: [example/simple_pipeline.clj](https://github.com/flosell/lambdacd-git/blob/master/example/lambdacd_git/example/simple_pipeline.clj)
 
 ### Waiting for a commit
 
@@ -79,7 +79,7 @@ You can have clone steps that clone into different subdirectories:
 ```
 
 If you want to use this in combination with `wait-for-git`, you need to detect which commit to use. For details, see
-https://github.com/flosell/lambdacd-git/blob/master/example/lambdacd_git/example/multi_repo_pipeline.clj
+[example/multi_repo_pipeline.clj](https://github.com/flosell/lambdacd-git/blob/master/example/lambdacd_git/example/multi_repo_pipeline.clj)
 
 
 ## Development
