@@ -3,7 +3,6 @@
             [lambdacd-git.git-utils :refer [git-init git-add-file git-commit git-checkout-b git-checkout commit-by-msg]]
             [lambdacd-git.git :refer :all]
             [lambdacd.util :as util]
-            [lambdacd-git.old-utils :refer [some-ctx]]
             [lambdacd-git.test-utils :refer [str-containing]]
             [clojure.java.io :as io])
   (:import (org.eclipse.jgit.api Git)))

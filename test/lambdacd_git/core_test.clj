@@ -2,10 +2,9 @@
   (:require [clojure.test :refer :all]
             [lambdacd-git.core :refer :all]
             [lambdacd-git.git-utils :as git-utils]
-            [lambdacd-git.old-utils :refer :all]
             [clojure.core.async :as async]
             [lambdacd.internal.pipeline-state :as pipeline-state]
-            [lambdacd-git.test-utils :refer [str-containing]]
+            [lambdacd-git.test-utils :refer [str-containing some-ctx-with]]
             [lambdacd.core :as lambdacd-core]
             [lambdacd.util :as util]
             [clojure.java.io :as io]))
