@@ -46,7 +46,7 @@ You'll find a complete example here: https://github.com/flosell/lambdacd-git/blo
       do-something)))
 ```
 
-## Get details on commits since last build
+### Get details on commits since last build
 
 ```clojure
 (defn clone [args ctx]
@@ -60,7 +60,7 @@ You'll find a complete example here: https://github.com/flosell/lambdacd-git/blo
       do-something)))
 ```
 
-## Working with more than one repository
+### Working with more than one repository
 
 You can have clone steps that clone into different subdirectories: 
 
