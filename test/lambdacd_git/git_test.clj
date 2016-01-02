@@ -28,7 +28,7 @@
                          (git-checkout "master"))]
       (is (= {"refs/heads/some-branch" (commit-by-msg git-handle "some commit on branch")
               "refs/heads/master"      (commit-by-msg git-handle "some commit on master")}
-             (current-revisions (:remote git-handle) (all-branches))))))
+             (current-revisions (:remote git-handle) (match-all-refs))))))
   (testing "that it returns an emtpy map if no branch matches"
     (let [git-handle (-> (git-init)
                          (git-commit "some commit on master"))]

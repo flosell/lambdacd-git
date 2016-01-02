@@ -13,11 +13,10 @@
             [lambdacd-git.git :as git]))
 
 (def repo "git@github.com:flosell/testrepo")
-(def branch "master")
 
 (defn wait-for-git [args ctx]
   (core/wait-for-git ctx repo
-                     :branch (git/all-branches)
+                     :ref (git/match-all-refs)
                      :ms-between-polls 1000))
 
 (defn clone [args ctx]

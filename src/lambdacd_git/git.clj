@@ -11,15 +11,18 @@
       (.getObjectId)
       (.name)))
 
-(defn match-branch [branch]
-  (fn [other-branch]
-    (= other-branch (str "refs/heads/" branch))))
+(defn match-ref [ref]
+  (fn [other-ref]
+    (= other-ref ref)))
 
-(defn match-branch-by-regex [regex]
+(defn match-branch [branch]
+  (match-ref (str "refs/heads/" branch)))
+
+(defn match-ref-by-regex [regex]
   (fn [other-branch]
     (re-matches regex other-branch)))
 
-(defn all-branches []
+(defn match-all-refs []
   (constantly true))
 
 (defn- entry-to-ref-and-hash [entry]

@@ -10,7 +10,8 @@
             [lambdacd-git.core :as core]
             [lambdacd.runners :as runners]
             [lambdacd-git.ssh-agent-support :as ssh-agent-support]
-            [lambdacd.steps.support :as support]))
+            [lambdacd.steps.support :as support]
+            [lambdacd-git.git :as git]))
 
 (def testrepo-remote "git@github.com:flosell/testrepo")
 (def git-remote "git@github.com:flosell/lambdacd-git")
@@ -18,7 +19,7 @@
 (defn wait-for [remote]
   (fn [args ctx]
     (let [wait-result (core/wait-for-git ctx remote
-                                         :branch "master"
+                                         :ref (git/match-branch "master")
                                          :ms-between-polls 1000)]
       ; when cloning later on, we need to know what triggered the build
       (assoc wait-result :changed-remote remote))))

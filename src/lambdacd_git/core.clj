@@ -1,6 +1,5 @@
 (ns lambdacd-git.core
   (:require [clojure.core.async :as async]
-            [lambdacd.util :as util]
             [clojure.tools.logging :as log]
             [lambdacd.steps.support :as support]
             [lambdacd.presentation.pipeline-state :as pipeline-state]
@@ -20,15 +19,15 @@
      :revision     new-revision
      :old-revision last-seen-revision}))
 
-(defn- report-git-exception [branch remote e]
-  (log/warn e (str "could not get current revision for branch " branch " on " remote))
-  (println "could not get current revision for branch" branch "on" remote ":" (.getMessage e)))
+(defn- report-git-exception [ref remote e]
+  (log/warn e (str "could not get current revision for ref " ref " on " remote))
+  (println "could not get current revision for ref" ref "on" remote ":" (.getMessage e)))
 
-(defn- current-revision-or-nil [remote branch]
+(defn- current-revision-or-nil [remote ref]
   (try
-    (git/current-revisions remote branch)
+    (git/current-revisions remote ref)
     (catch Exception e
-      (report-git-exception branch remote e)
+      (report-git-exception ref remote e)
       nil)))
 
 (defn- found-new-commit [last-seen-revisions current-revisions]
@@ -40,11 +39,11 @@
      :old-revision  (:old-revision changes)
      :all-revisions current-revisions}))
 
-(defn- wait-for-revision-changed [last-seen-revisions remote branch ctx ms-between-polls]
+(defn- wait-for-revision-changed [last-seen-revisions remote ref ctx ms-between-polls]
   (println "Last seen revisions:" (or last-seen-revisions "None") ". Waiting for new commit...")
   (loop [last-seen-revisions last-seen-revisions]
     (support/if-not-killed ctx
-      (let [current-revisions (current-revision-or-nil remote branch)]
+      (let [current-revisions (current-revision-or-nil remote ref)]
         (if (and
               (not (nil? current-revisions))
               (not= current-revisions last-seen-revisions))
@@ -57,10 +56,10 @@
   (let [last-step-result (pipeline-state/most-recent-step-result-with :_git-last-seen-revisions ctx)]
     (:_git-last-seen-revisions last-step-result)))
 
-(defn- initial-revisions [ctx remote branch]
+(defn- initial-revisions [ctx remote ref]
   (or
     (last-seen-revisions-from-history ctx)
-    (current-revision-or-nil remote branch)))
+    (current-revision-or-nil remote ref)))
 
 (defn- persist-last-seen-revisions [wait-for-result last-seen-revisions ctx]
   (let [current-revisions    (:all-revisions wait-for-result)
@@ -71,25 +70,25 @@
 (defn- regex? [x]
   (instance? Pattern x))
 
-(defn- to-branch-pred [branch-spec]
+(defn- to-ref-pred [ref-spec]
   (cond
-    (string? branch-spec) (git/match-branch branch-spec)
-    (regex? branch-spec) (git/match-branch-by-regex branch-spec)
-    :else branch-spec))
+    (string? ref-spec) (git/match-ref ref-spec)
+    (regex? ref-spec) (git/match-ref-by-regex ref-spec)
+    :else ref-spec))
 
 (defn- report-waiting-status [ctx]
   (async/>!! (:result-channel ctx) [:status :waiting]))
 
 (defn wait-for-git
-  "step that waits for the head of a branch to change"
-  [ctx remote & {:keys [branch ms-between-polls]
-                   :or   {ms-between-polls (* 10 1000)
-                          branch           "master"}}]
+  "step that waits for the head of a ref to change"
+  [ctx remote & {:keys [ref ms-between-polls]
+                 :or   {ms-between-polls (* 10 1000)
+                        ref              (git/match-branch "master")}}]
   (support/capture-output ctx
     (report-waiting-status ctx)
-    (let [branch-pred       (to-branch-pred branch)
-          initial-revisions (initial-revisions ctx remote branch-pred)
-          wait-for-result   (wait-for-revision-changed initial-revisions remote branch-pred ctx ms-between-polls)]
+    (let [ref-pred          (to-ref-pred ref)
+          initial-revisions (initial-revisions ctx remote ref-pred)
+          wait-for-result   (wait-for-revision-changed initial-revisions remote ref-pred ctx ms-between-polls)]
       (persist-last-seen-revisions wait-for-result initial-revisions ctx))))
 
 (defn clone [ctx repo ref cwd]

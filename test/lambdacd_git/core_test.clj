@@ -8,7 +8,8 @@
             [lambdacd.core :as lambdacd-core]
             [lambdacd.util :as util]
             [clojure.data :as data]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [lambdacd-git.git :as git]))
 
 (defn init-state []
   (let [is-killed (atom false)
@@ -30,9 +31,9 @@
                          (git-utils/git-commit (:git %) msg)))
   state)
 
-(defn git-checkout-b [state new-branch]
+(defn git-checkout-b [state new-ref]
   (swap! state #(assoc % :git
-                         (git-utils/git-checkout-b (:git %) new-branch)))
+                         (git-utils/git-checkout-b (:git %) new-ref)))
   state)
 
 (defn git-add-file [state file-name file-content]
@@ -40,15 +41,15 @@
                          (git-utils/git-add-file (:git %) file-name file-content)))
   state)
 
-(defn start-wait-for-git-step [state branch]
+(defn start-wait-for-git-step [state ref]
   (let [wait-for-result-channel (async/go
                                   (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
                                                                                         (fn [args ctx]
-                                                                                          (wait-for-git ctx (get-in @state [:git :remote]) :branch branch :ms-between-polls 100)))]
+                                                                                          (wait-for-git ctx (get-in @state [:git :remote]) :ref ref :ms-between-polls 100)))]
                                     (first (vals (:outputs execute-step-result)))))]
     (swap! state #(assoc % :result-channel wait-for-result-channel))
     state))
-(defn start-wait-for-git-step-without-branch [state]
+(defn start-wait-for-git-step-without-ref [state]
   (let [wait-for-result-channel (async/go
                                   (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
                                                                                         (fn [args ctx]
@@ -115,7 +116,7 @@
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")
-                    (start-wait-for-git-step "master")
+                    (start-wait-for-git-step "refs/heads/master")
                     (wait-a-bit)
                     (git-commit "other commit")
                     (get-step-result))]
@@ -125,19 +126,19 @@
       (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))
       (is (str-containing (commit-hash-by-msg state "initial commit") (:out (step-result state))))
       (is (str-containing "on refs/heads/master" (:out (step-result state))))))
-  (testing "that we can pass a function to filter branches we want to react on"
+  (testing "that we can pass a function to filter refs we want to react on"
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")
                     (git-checkout-b "some-branch")
-                    (start-wait-for-git-step (fn [branch] (.endsWith branch "some-branch")))
+                    (start-wait-for-git-step (fn [ref] (.endsWith ref "some-branch")))
                     (git-commit "other commit")
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
       (is (= (commit-hash-by-msg state "initial commit") (:old-revision (step-result state))))
       (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))
       (is (str-containing (commit-hash-by-msg state "other commit") (:out (step-result state))))))
-  (testing "that we can pass a regex to filter branches we want to react on"
+  (testing "that we can pass a regex to filter refes we want to react on"
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")
@@ -149,13 +150,13 @@
       (is (= (commit-hash-by-msg state "initial commit") (:old-revision (step-result state))))
       (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))
       (is (str-containing (commit-hash-by-msg state "other commit") (:out (step-result state))))))
-  (testing "that we can pass a function that allows all branches"
+  (testing "that we can pass a function that allows all refs"
     (let [state (-> (init-state)
                     (git-init)
-                    (start-wait-for-git-step (fn [branch] true))
+                    (start-wait-for-git-step (fn [ref] true))
                     (git-commit "initial commit")
                     (wait-for-step-to-complete)
-                    (start-wait-for-git-step (fn [branch] true))
+                    (start-wait-for-git-step (fn [ref] true))
                     (git-checkout-b "some-branch")
                     (git-commit "other commit")
                     (get-step-result))]
@@ -167,7 +168,7 @@
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")
-                    (start-wait-for-git-step "master")
+                    (start-wait-for-git-step (git/match-branch "master"))
                     (wait-a-bit)
                     (git-commit "other commit")
                     (get-step-result))]
@@ -177,12 +178,12 @@
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")
-                    (start-wait-for-git-step "master")
+                    (start-wait-for-git-step (git/match-branch "master"))
                     (wait-a-bit)
                     (git-commit "other commit")
                     (wait-for-step-to-complete)
                     (git-commit "commit while not waiting")
-                    (start-wait-for-git-step "master")
+                    (start-wait-for-git-step (git/match-branch "master"))
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
       (is (= (commit-hash-by-msg state "other commit") (:old-revision (step-result state))))
@@ -191,7 +192,7 @@
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")
-                    (start-wait-for-git-step "master")
+                    (start-wait-for-git-step (git/match-branch "master"))
                     (wait-a-bit)
                     (kill-waiting-step)
                     (get-step-result))]
@@ -200,7 +201,7 @@
   (testing "that it retries until being killed if the repository cannot be reached"
     (let [state (-> (init-state)
                     (set-git-remote "some-uri-that-doesnt-exist")
-                    (start-wait-for-git-step "master")
+                    (start-wait-for-git-step (git/match-branch "master"))
                     (wait-a-bit)
                     (kill-waiting-step)
                     (get-step-result))]
@@ -208,15 +209,15 @@
   (testing "that it prints out errors if a repository can't be reached"
     (let [state (-> (init-state)
                     (set-git-remote "some-uri-that-doesnt-exist")
-                    (start-wait-for-git-step "master")
+                    (start-wait-for-git-step (git/match-branch "master"))
                     (wait-a-bit)
                     (kill-waiting-step)
                     (get-step-result))]
       (is (str-containing "some-uri-that-doesnt-exist" (:out (step-result state))))))
-  (testing "that it assumes master if no branch is given"
+  (testing "that it assumes master if no ref is given"
     (let [state (-> (init-state)
                     (git-init)
-                    (start-wait-for-git-step-without-branch)
+                    (start-wait-for-git-step-without-ref)
                     (git-commit "initial commit")
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
@@ -253,10 +254,10 @@
           (git-init)
           (git-add-file "some-file" "some content")
           (git-commit "some commit")
-          (start-clone-step "some-ref" workspace)
+          (start-clone-step "some-branch" workspace)
           (get-step-result))
       (is (= :failure (:status (step-result state))))
-      (is (str-containing "Could not find ref some-ref" (:out (step-result state)))))))
+      (is (str-containing "Could not find ref some-branch" (:out (step-result state)))))))
 
 (deftest list-changes-test
   (testing "normal behavior"
