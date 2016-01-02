@@ -66,9 +66,9 @@ You can have clone steps that clone into different subdirectories:
 
 ```clojure
 (defn clone-foo [args ctx]
-  (core/clone ctx repo branch (str (:cwd args) "/" "foo")))
+  (lambdacd-git/clone ctx repo branch (str (:cwd args) "/" "foo")))
 (defn clone-bar [args ctx]
-  (core/clone ctx repo branch (str (:cwd args) "/" "bar")))
+  (lambdacd-git/clone ctx repo branch (str (:cwd args) "/" "bar")))
 
 (def pipeline-structure
   `(; ... 
