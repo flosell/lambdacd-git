@@ -7,6 +7,7 @@
             [lambdacd-git.test-utils :refer [str-containing some-ctx-with]]
             [lambdacd.core :as lambdacd-core]
             [lambdacd.util :as util]
+            [clojure.data :as data]
             [clojure.java.io :as io]))
 
 (defn init-state []
@@ -27,6 +28,11 @@
 (defn git-commit [state msg]
   (swap! state #(assoc % :git
                          (git-utils/git-commit (:git %) msg)))
+  state)
+
+(defn git-checkout-b [state new-branch]
+  (swap! state #(assoc % :git
+                         (git-utils/git-checkout-b (:git %) new-branch)))
   state)
 
 (defn git-add-file [state file-name file-content]
@@ -109,6 +115,44 @@
       (is (= (commit-hash-by-msg state "initial commit") (:old-revision (step-result state))))
       (is (= (commit-hash-by-msg state "other commit") (:revision     (step-result state))))
       (is (str-containing (commit-hash-by-msg state "initial commit") (:out (step-result state))))))
+  (testing "that we can pass a function to filter branches we want to react on"
+    (let [state (-> (init-state)
+                    (git-init)
+                    (git-commit "initial commit")
+                    (git-checkout-b "some-branch")
+                    (start-wait-for-git-step (fn [branch] (.endsWith branch "some-branch")))
+                    (git-commit "other commit")
+                    (get-step-result))]
+      (is (= :success (:status (step-result state))))
+      (is (= (commit-hash-by-msg state "initial commit") (:old-revision (step-result state))))
+      (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))
+      (is (str-containing (commit-hash-by-msg state "other commit") (:out (step-result state))))))
+  (testing "that we can pass a regex to filter branches we want to react on"
+    (let [state (-> (init-state)
+                    (git-init)
+                    (git-commit "initial commit")
+                    (git-checkout-b "some-branch")
+                    (start-wait-for-git-step #"refs/heads/some-.*")
+                    (git-commit "other commit")
+                    (get-step-result))]
+      (is (= :success (:status (step-result state))))
+      (is (= (commit-hash-by-msg state "initial commit") (:old-revision (step-result state))))
+      (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))
+      (is (str-containing (commit-hash-by-msg state "other commit") (:out (step-result state))))))
+  (testing "that we can pass a function that allows all branches"
+    (let [state (-> (init-state)
+                    (git-init)
+                    (start-wait-for-git-step (fn [branch] true))
+                    (git-commit "initial commit")
+                    (wait-for-step-to-complete)
+                    (start-wait-for-git-step (fn [branch] true))
+                    (git-checkout-b "some-branch")
+                    (git-commit "other commit")
+                    (get-step-result))]
+      (is (= :success (:status (step-result state))))
+      (is (= nil (:old-revision (step-result state))))
+      (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))
+      (is (str-containing (commit-hash-by-msg state "other commit") (:out (step-result state))))))
   (testing "that it prints out information on old and new commit hashes"
     (let [state (-> (init-state)
                     (git-init)
@@ -142,7 +186,7 @@
                     (kill-waiting-step)
                     (get-step-result))]
       (is (= :killed (:status (step-result state))))
-      (is (= (commit-hash-by-msg state "initial commit") (:_git-last-seen-revision (step-result state))))))
+      (is (= {"refs/heads/master" (commit-hash-by-msg state "initial commit")} (:_git-last-seen-revisions (step-result state))))))
   (testing "that it retries until being killed if the repository cannot be reached"
     (let [state (-> (init-state)
                     (set-git-remote "some-uri-that-doesnt-exist")
@@ -166,7 +210,6 @@
                     (start-wait-for-git-step nil)
                     (get-step-result))]
       (is (= :failure (:status (step-result state)))))))
-
 (deftest clone-test
   (testing "that we can clone a specific commit"
     (let [state (init-state)

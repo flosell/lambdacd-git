@@ -11,13 +11,29 @@
       (.getObjectId)
       (.name)))
 
-(defn current-revision [remote branch]
-  (-> (Git/lsRemoteRepository)
-      (.setHeads true)
-      (.setRemote remote)
-      (.callAsMap)
-      (get (str "refs/heads/" branch))
-      (ref->hash)))
+(defn match-branch [branch]
+  (fn [other-branch]
+    (= other-branch (str "refs/heads/" branch))))
+
+(defn match-branch-by-regex [regex]
+  (fn [other-branch]
+    (re-matches regex other-branch)))
+
+(defn all-branches []
+  (constantly true))
+
+(defn- entry-to-ref-and-hash [entry]
+  [(key entry) (ref->hash (val entry))])
+
+(defn current-revisions [remote branch-pred]
+  (let [ref-map (-> (Git/lsRemoteRepository)
+                    (.setHeads true)
+                    (.setRemote remote)
+                    (.callAsMap))]
+    (->> ref-map
+         (filter #(branch-pred (key %)))
+         (map entry-to-ref-and-hash)
+         (into {}))))
 
 (defn resolve-object [git s]
   (-> git

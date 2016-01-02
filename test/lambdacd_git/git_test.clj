@@ -10,18 +10,30 @@
 (defn git-from-dir [git-dir]
   (Git/open (io/file git-dir)))
 
+(defn no-branches []
+  (constantly false))
+
+
 (deftest current-revision-test
   (testing "that it can get the head of the master branch"
     (let [git-handle (-> (git-init)
                          (git-commit "some commit"))]
-      (is (= (:hash (first (:commits git-handle))) (current-revision (:remote git-handle) "master")))))
-  (testing "that it can get the head of a different branch"
+      (is (= {"refs/heads/master" (commit-by-msg git-handle "some commit")}
+             (current-revisions (:remote git-handle) (match-branch "master"))))))
+  (testing "that it can get the head of all branches"
     (let [git-handle (-> (git-init)
                          (git-commit "some commit on master")
                          (git-checkout-b "some-branch")
                          (git-commit "some commit on branch")
                          (git-checkout "master"))]
-      (is (= (:hash (second (:commits git-handle))) (current-revision (:remote git-handle) "some-branch"))))))
+      (is (= {"refs/heads/some-branch" (commit-by-msg git-handle "some commit on branch")
+              "refs/heads/master"      (commit-by-msg git-handle "some commit on master")}
+             (current-revisions (:remote git-handle) (all-branches))))))
+  (testing "that it returns an emtpy map if no branch matches"
+    (let [git-handle (-> (git-init)
+                         (git-commit "some commit on master"))]
+      (is (= {}
+             (current-revisions (:remote git-handle) (no-branches)))))))
 
 (deftest clone-repo-test
   (testing "that we can clone the head of master"

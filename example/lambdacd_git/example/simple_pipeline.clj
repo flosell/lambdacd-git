@@ -9,18 +9,19 @@
             [lambdacd.ui.ui-server :as ui]
             [lambdacd-git.core :as core]
             [lambdacd.runners :as runners]
-            [lambdacd-git.ssh-agent-support :as ssh-agent-support]))
+            [lambdacd-git.ssh-agent-support :as ssh-agent-support]
+            [lambdacd-git.git :as git]))
 
 (def repo "git@github.com:flosell/testrepo")
 (def branch "master")
 
 (defn wait-for-git [args ctx]
   (core/wait-for-git ctx repo
-                     :branch branch
+                     :branch (git/all-branches)
                      :ms-between-polls 1000))
 
 (defn clone [args ctx]
-  (core/clone ctx repo branch (:cwd args)))
+  (core/clone ctx repo (:revision args) (:cwd args)))
 
 (defn ls [args ctx]
   (shell/bash ctx (:cwd args) "ls"))
