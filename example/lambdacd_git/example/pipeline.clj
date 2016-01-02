@@ -15,7 +15,9 @@
 (def branch "master")
 
 (defn wait-for-git [args ctx]
-  (core/wait-for-git ctx repo branch :ms-between-polls 1000))
+  (core/wait-for-git ctx repo
+                     :branch branch
+                     :ms-between-polls 1000))
 
 (defn clone [args ctx]
   (core/clone ctx repo branch (:cwd args)))

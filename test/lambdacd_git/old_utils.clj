@@ -107,6 +107,6 @@
    (execute-wait-for-async git-src-dir last-seen-revision (async/chan 100) (atom false)))
   ([git-src-dir last-seen-revision result-channel is-killed]
    (let [ctx (some-context-with last-seen-revision result-channel is-killed)
-         ch (async/go (git-core/wait-for-git ctx (repo-uri-for git-src-dir) "master" :ms-between-polls 100))]
+         ch (async/go (git-core/wait-for-git ctx (repo-uri-for git-src-dir) :branch "master" :ms-between-polls 100))]
      (Thread/sleep 500) ;; dirty hack to make sure we started waiting before making the next commit
      ch)))

@@ -52,12 +52,17 @@
 
 (defn wait-for-git
   "step that waits for the head of a branch to change"
-  [ctx repo-uri branch & {:keys [ms-between-polls]
-                          :or   {ms-between-polls (* 10 1000)}}]
+  [ctx repo-uri & {:keys [branch ms-between-polls]
+                   :or   {ms-between-polls (* 10 1000)
+                          branch           nil}}]
   (support/capture-output ctx
-    (let [last-seen-revision (last-seen-revision-for-this-step ctx repo-uri branch)
-          wait-for-result (wait-for-revision-changed-from last-seen-revision repo-uri branch ctx ms-between-polls)]
-      (persist-last-seen-revision wait-for-result last-seen-revision ctx))))
+    (if branch
+      (let [last-seen-revision (last-seen-revision-for-this-step ctx repo-uri branch)
+            wait-for-result (wait-for-revision-changed-from last-seen-revision repo-uri branch ctx ms-between-polls)]
+        (persist-last-seen-revision wait-for-result last-seen-revision ctx))
+      (do
+        (println "Waiting for a commit without specifying a branch is unsupported at this time")
+        {:status :failure}))))
 
 (defn clone [ctx repo ref cwd]
   (support/capture-output ctx

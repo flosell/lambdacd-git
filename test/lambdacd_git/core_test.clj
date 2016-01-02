@@ -35,11 +35,11 @@
                          (git-utils/git-add-file (:git %) file-name file-content)))
   state)
 
-(defn start-wait-for-git-step [state]
+(defn start-wait-for-git-step [state branch]
   (let [wait-for-result-channel (async/go
                                   (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
                                                                                         (fn [args ctx]
-                                                                                          (wait-for-git ctx (get-in @state [:git :remote]) "master" :ms-between-polls 100)))]
+                                                                                          (wait-for-git ctx (get-in @state [:git :remote]) :branch branch :ms-between-polls 100)))]
                                     (first (vals (:outputs execute-step-result)))))]
     (swap! state #(assoc % :result-channel wait-for-result-channel))
     state))
@@ -102,7 +102,7 @@
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")
-                    (start-wait-for-git-step)
+                    (start-wait-for-git-step "master")
                     (wait-a-bit)
                     (git-commit "other commit")
                     (get-step-result))]
@@ -114,7 +114,7 @@
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")
-                    (start-wait-for-git-step)
+                    (start-wait-for-git-step "master")
                     (wait-a-bit)
                     (git-commit "other commit")
                     (get-step-result))]
@@ -124,12 +124,12 @@
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")
-                    (start-wait-for-git-step)
+                    (start-wait-for-git-step "master")
                     (wait-a-bit)
                     (git-commit "other commit")
                     (wait-for-step-to-complete)
                     (git-commit "commit while not waiting")
-                    (start-wait-for-git-step)
+                    (start-wait-for-git-step "master")
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
       (is (= (commit-hash-by-msg state "other commit") (:old-revision (step-result state))))
@@ -138,7 +138,7 @@
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")
-                    (start-wait-for-git-step)
+                    (start-wait-for-git-step "master")
                     (wait-a-bit)
                     (kill-waiting-step)
                     (get-step-result))]
@@ -147,7 +147,7 @@
   (testing "that it retries until being killed if the repository cannot be reached"
     (let [state (-> (init-state)
                     (set-git-remote "some-uri-that-doesnt-exist")
-                    (start-wait-for-git-step)
+                    (start-wait-for-git-step "master")
                     (wait-a-bit)
                     (kill-waiting-step)
                     (get-step-result))]
@@ -155,11 +155,18 @@
   (testing "that it prints out errors if a repository can't be reached"
     (let [state (-> (init-state)
                     (set-git-remote "some-uri-that-doesnt-exist")
-                    (start-wait-for-git-step)
+                    (start-wait-for-git-step "master")
                     (wait-a-bit)
                     (kill-waiting-step)
                     (get-step-result))]
-      (is (str-containing "some-uri-that-doesnt-exist" (:out (step-result state)))))))
+      (is (str-containing "some-uri-that-doesnt-exist" (:out (step-result state))))))
+  (testing "that it fails if no branch is given"
+    (let [state (-> (init-state)
+                    (git-init)
+                    (git-commit "initial commit")
+                    (start-wait-for-git-step nil)
+                    (get-step-result))]
+      (is (= :failure (:status (step-result state)))))))
 
 (deftest clone-test
   (testing "that we can clone a specific commit"
