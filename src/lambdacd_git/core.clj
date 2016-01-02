@@ -9,57 +9,59 @@
             [clojure.java.io :as io])
   (:import (java.util.regex Pattern)))
 
-(defn report-git-exception [branch repo-uri e]
-  (log/warn e (str "could not get current revision for branch " branch " on " repo-uri))
-  (println "could not get current revision for branch" branch "on" repo-uri ":" (.getMessage e)))
-
-(defn- find-changed-ref [old-revisions new-revisions]
-  (let [[_ new-entries _]  (diff old-revisions new-revisions)
+(defn- find-changed-revision [old-revisions new-revisions]
+  (let [[_ new-entries _] (diff old-revisions new-revisions)
         changed-ref        (->> new-entries
                                 (first)
                                 (key))
         last-seen-revision (get old-revisions changed-ref)
         new-revision       (get new-revisions changed-ref)]
-    {:status :success
-     :revision new-revision
-     :old-revision last-seen-revision
-     :all-revisions new-revisions}))
+    {:revision     new-revision
+     :old-revision last-seen-revision}))
 
-(defn- revisions-changed-from [last-seen-revisions repo-uri branch]
+(defn- report-git-exception [branch repo-uri e]
+  (log/warn e (str "could not get current revision for branch " branch " on " repo-uri))
+  (println "could not get current revision for branch" branch "on" repo-uri ":" (.getMessage e)))
+
+(defn- current-revision-or-nil [repo-uri branch]
   (try
-    (let [new-revisions (git/current-revisions repo-uri branch)]
-      (log/debug "waiting for new revision. current revisions:" new-revisions "last seen:" last-seen-revisions)
-      (when (not= last-seen-revisions new-revisions)
-        (find-changed-ref last-seen-revisions new-revisions)))
+    (git/current-revisions repo-uri branch)
     (catch Exception e
       (report-git-exception branch repo-uri e)
-      {:status :failure})))
+      nil)))
 
-(defn- wait-for-revision-changed-from [last-seen-revisions repo-uri branch ctx ms-between-polls]
-    (async/>!! (:result-channel ctx) [:status :waiting])
-    (println "Last seen revisions:" (or last-seen-revisions "None") ". Waiting for new commit...")
-    (loop [result (revisions-changed-from last-seen-revisions repo-uri branch)]
-      (support/if-not-killed ctx
-                             (if (= :success (:status result))
-                               (do
-                                 (println "Found new commit: " (:revision result) ".")
-                                 result)
-                               (do (Thread/sleep ms-between-polls)
-                                   (recur (revisions-changed-from last-seen-revisions repo-uri branch)))))))
+(defn- found-new-commit [last-seen-revisions current-revisions]
+  (let [changes (find-changed-revision last-seen-revisions current-revisions)]
+    (println "Found new commit: " (:revision changes) ".")
+    {:status        :success
+     :revision      (:revision changes)
+     :old-revision  (:old-revision changes)
+     :all-revisions current-revisions}))
 
-(defn- last-seen-revisions-for-this-step [ctx repo-uri branch]
-  (let [last-step-result (pipeline-state/most-recent-step-result-with :_git-last-seen-revisions ctx)
-        last-seen-revisions-in-history (:_git-last-seen-revisions last-step-result)]
-    (if-not (nil? last-seen-revisions-in-history)
-      last-seen-revisions-in-history
-      (try
-        (git/current-revisions repo-uri branch)
-        (catch Exception e
-          (report-git-exception branch repo-uri e)
-          nil)))))
+(defn- wait-for-revision-changed [last-seen-revisions repo-uri branch ctx ms-between-polls]
+  (println "Last seen revisions:" (or last-seen-revisions "None") ". Waiting for new commit...")
+  (loop [last-seen-revisions last-seen-revisions]
+    (support/if-not-killed ctx
+      (let [current-revisions (current-revision-or-nil repo-uri branch)]
+        (if (and
+              (not (nil? current-revisions))
+              (not= current-revisions last-seen-revisions))
+          (found-new-commit last-seen-revisions current-revisions)
+          (do
+            (Thread/sleep ms-between-polls)
+            (recur current-revisions)))))))
+
+(defn- last-seen-revisions-from-history [ctx]
+  (let [last-step-result (pipeline-state/most-recent-step-result-with :_git-last-seen-revisions ctx)]
+    (:_git-last-seen-revisions last-step-result)))
+
+(defn- initial-revisions [ctx repo-uri branch]
+  (or
+    (last-seen-revisions-from-history ctx)
+    (current-revision-or-nil repo-uri branch)))
 
 (defn- persist-last-seen-revisions [wait-for-result last-seen-revisions ctx]
-  (let [current-revisions (:all-revisions wait-for-result)
+  (let [current-revisions    (:all-revisions wait-for-result)
         revisions-to-persist (or current-revisions last-seen-revisions)]
     (async/>!! (:result-channel ctx) [:_git-last-seen-revisions revisions-to-persist]) ; by sending it through the result-channel, we can be pretty sure users don't overwrite it
     (assoc wait-for-result :_git-last-seen-revisions revisions-to-persist)))
@@ -73,15 +75,20 @@
     (regex? branch-spec) (git/match-branch-by-regex branch-spec)
     :else branch-spec))
 
+(defn- report-waiting-status [ctx]
+  (async/>!! (:result-channel ctx) [:status :waiting]))
+
 (defn wait-for-git
   "step that waits for the head of a branch to change"
   [ctx repo-uri & {:keys [branch ms-between-polls]
                    :or   {ms-between-polls (* 10 1000)
                           branch           "master"}}]
   (support/capture-output ctx
-      (let [last-seen-revisions (last-seen-revisions-for-this-step ctx repo-uri (to-branch-pred branch))
-            wait-for-result (wait-for-revision-changed-from last-seen-revisions repo-uri (to-branch-pred branch) ctx ms-between-polls)]
-        (persist-last-seen-revisions wait-for-result last-seen-revisions ctx))))
+    (report-waiting-status ctx)
+    (let [branch-pred       (to-branch-pred branch)
+          initial-revisions (initial-revisions ctx repo-uri branch-pred)
+          wait-for-result   (wait-for-revision-changed initial-revisions repo-uri branch-pred ctx ms-between-polls)]
+      (persist-last-seen-revisions wait-for-result initial-revisions ctx))))
 
 (defn clone [ctx repo ref cwd]
   (support/capture-output ctx
