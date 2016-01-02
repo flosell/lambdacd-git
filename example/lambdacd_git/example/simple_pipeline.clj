@@ -1,8 +1,8 @@
 (ns lambdacd-git.example.simple-pipeline
-  (:use [compojure.core]
-        [lambdacd.steps.control-flow])
+  (:use [compojure.core])
   (:require [lambdacd.steps.shell :as shell]
             [lambdacd.steps.manualtrigger :refer [wait-for-manual-trigger]]
+            [lambdacd.steps.control-flow :refer [either with-workspace in-parallel run]]
             [lambdacd.core :as lambdacd]
             [ring.server.standalone :as ring-server]
             [lambdacd.util :as util]

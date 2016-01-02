@@ -77,15 +77,11 @@
   "step that waits for the head of a branch to change"
   [ctx repo-uri & {:keys [branch ms-between-polls]
                    :or   {ms-between-polls (* 10 1000)
-                          branch           nil}}]
+                          branch           "master"}}]
   (support/capture-output ctx
-    (if branch
       (let [last-seen-revisions (last-seen-revisions-for-this-step ctx repo-uri (to-branch-pred branch))
             wait-for-result (wait-for-revision-changed-from last-seen-revisions repo-uri (to-branch-pred branch) ctx ms-between-polls)]
-        (persist-last-seen-revisions wait-for-result last-seen-revisions ctx))
-      (do
-        (println "Waiting for a commit without specifying a branch is unsupported at this time")
-        {:status :failure}))))
+        (persist-last-seen-revisions wait-for-result last-seen-revisions ctx))))
 
 (defn clone [ctx repo ref cwd]
   (support/capture-output ctx

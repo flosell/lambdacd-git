@@ -48,6 +48,14 @@
                                     (first (vals (:outputs execute-step-result)))))]
     (swap! state #(assoc % :result-channel wait-for-result-channel))
     state))
+(defn start-wait-for-git-step-without-branch [state]
+  (let [wait-for-result-channel (async/go
+                                  (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
+                                                                                        (fn [args ctx]
+                                                                                          (wait-for-git ctx (get-in @state [:git :remote]) :ms-between-polls 100)))]
+                                    (first (vals (:outputs execute-step-result)))))]
+    (swap! state #(assoc % :result-channel wait-for-result-channel))
+    state))
 
 (defn start-clone-step [state ref cwd]
   (let [wait-for-result-channel (async/go
@@ -203,13 +211,14 @@
                     (kill-waiting-step)
                     (get-step-result))]
       (is (str-containing "some-uri-that-doesnt-exist" (:out (step-result state))))))
-  (testing "that it fails if no branch is given"
+  (testing "that it assumes master if no branch is given"
     (let [state (-> (init-state)
                     (git-init)
+                    (start-wait-for-git-step-without-branch)
                     (git-commit "initial commit")
-                    (start-wait-for-git-step nil)
                     (get-step-result))]
-      (is (= :failure (:status (step-result state)))))))
+      (is (= :success (:status (step-result state))))
+      (is (= (commit-hash-by-msg state "initial commit") (:revision (step-result state)))))))
 (deftest clone-test
   (testing "that we can clone a specific commit"
     (let [state (init-state)
