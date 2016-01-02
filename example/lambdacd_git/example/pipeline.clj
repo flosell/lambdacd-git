@@ -31,7 +31,7 @@
       wait-for-git)
      (with-workspace
        clone
-       core/changed-commits
+       core/list-changes
 
        ls)))
 

@@ -91,7 +91,7 @@
 (defn no-git-repo? [cwd]
   (not (.exists (io/file cwd ".git"))))
 
-(defn changed-commits [args ctx]
+(defn list-changes [args ctx]
   (support/capture-output ctx
     (let [old-revision (:old-revision args)
           new-revision (:revision args)

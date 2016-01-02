@@ -53,13 +53,13 @@
     (swap! state #(assoc % :result-channel wait-for-result-channel))
     state))
 
-(defn start-changed-commits-step [state cwd old-revision new-revision]
+(defn start-list-changes-step [state cwd old-revision new-revision]
   (let [wait-for-result-channel (async/go
                                   (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
                                                                                         (fn [args ctx]
-                                                                                          (changed-commits {:cwd cwd
+                                                                                          (list-changes {:cwd             cwd
                                                                                                             :old-revision old-revision
-                                                                                                            :revision new-revision} ctx)))]
+                                                                                                            :revision     new-revision} ctx)))]
                                     (first (vals (:outputs execute-step-result)))))]
     (swap! state #(assoc % :result-channel wait-for-result-channel))
     state))
@@ -205,7 +205,7 @@
       (is (= :failure (:status (step-result state))))
       (is (str-containing "Could not find ref some-ref" (:out (step-result state)))))))
 
-(deftest changed-commits-test
+(deftest list-changes-test
   (testing "normal behavior"
     (let [state (init-state)
           workspace (util/create-temp-dir)]
@@ -216,7 +216,7 @@
           (git-commit "third commit")
           (start-clone-step "master" workspace)
           (wait-for-step-to-complete)
-          (start-changed-commits-step workspace (commit-hash-by-msg state "first commit") (commit-hash-by-msg state "third commit"))
+          (start-list-changes-step workspace (commit-hash-by-msg state "first commit") (commit-hash-by-msg state "third commit"))
           (get-step-result))
       (testing "that it returns the changed commits"
         (is (= [{:hash (commit-hash-by-msg state "second commit")
@@ -236,7 +236,7 @@
     (testing "that an error is reported if no cwd is set"
       (let [state (init-state)]
         (-> state
-            (start-changed-commits-step nil "some hash" "some other hash")
+            (start-list-changes-step nil "some hash" "some other hash")
             (get-step-result))
         (is (str-containing "No working directory" (:out (step-result state))))
         (is (= :failure (:status (step-result state))))))
@@ -244,7 +244,7 @@
       (let [state (init-state)
             workspace (util/create-temp-dir)]
         (-> state
-            (start-changed-commits-step workspace "some hash" "some other hash")
+            (start-list-changes-step workspace "some hash" "some other hash")
             (get-step-result))
         (is (str-containing "No .git directory" (:out (step-result state))))
         (is (= :failure (:status (step-result state))))))
@@ -256,7 +256,7 @@
             (git-commit "some commit")
             (start-clone-step "HEAD" workspace)
             (wait-for-step-to-complete)
-            (start-changed-commits-step workspace nil nil)
+            (start-list-changes-step workspace nil nil)
             (get-step-result))
         (is (str-containing "Current HEAD" (:out (step-result state))))
         (is (str-containing (commit-hash-by-msg state "some commit") (:out (step-result state))))
