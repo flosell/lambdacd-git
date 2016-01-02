@@ -30,14 +30,15 @@
       (report-git-exception ref remote e)
       nil)))
 
-(defn- found-new-commit [last-seen-revisions current-revisions]
+(defn- found-new-commit [remote last-seen-revisions current-revisions]
   (let [changes (find-changed-revision last-seen-revisions current-revisions)]
     (println "Found new commit: " (:revision changes) "on" (:changed-ref changes))
-    {:status        :success
-     :changed-ref   (:changed-ref changes)
-     :revision      (:revision changes)
-     :old-revision  (:old-revision changes)
-     :all-revisions current-revisions}))
+    {:status         :success
+     :changed-ref    (:changed-ref changes)
+     :changed-remote remote
+     :revision       (:revision changes)
+     :old-revision   (:old-revision changes)
+     :all-revisions  current-revisions}))
 
 (defn- wait-for-revision-changed [last-seen-revisions remote ref ctx ms-between-polls]
   (println "Last seen revisions:" (or last-seen-revisions "None") ". Waiting for new commit...")
@@ -47,7 +48,7 @@
         (if (and
               (not (nil? current-revisions))
               (not= current-revisions last-seen-revisions))
-          (found-new-commit last-seen-revisions current-revisions)
+          (found-new-commit remote last-seen-revisions current-revisions)
           (do
             (Thread/sleep ms-between-polls)
             (recur current-revisions)))))))

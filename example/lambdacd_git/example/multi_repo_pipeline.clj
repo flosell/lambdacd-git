@@ -1,8 +1,8 @@
 (ns lambdacd-git.example.multi-repo-pipeline
-  (:use [compojure.core]
-        [lambdacd.steps.control-flow])
+  (:use [compojure.core])
   (:require [lambdacd.steps.shell :as shell]
             [lambdacd.steps.manualtrigger :refer [wait-for-manual-trigger]]
+            [lambdacd.steps.control-flow :refer [either with-workspace in-parallel run]]
             [lambdacd.core :as lambdacd]
             [ring.server.standalone :as ring-server]
             [lambdacd.util :as util]
@@ -18,15 +18,13 @@
 
 (defn wait-for [remote]
   (fn [args ctx]
-    (let [wait-result (core/wait-for-git ctx remote
-                                         :ref (git/match-branch "master")
-                                         :ms-between-polls 1000)]
-      ; when cloning later on, we need to know what triggered the build
-      (assoc wait-result :changed-remote remote))))
+    (core/wait-for-git ctx remote
+                       :ref (git/match-branch "master")
+                       :ms-between-polls 1000)))
 
 (defn- revision-or-master [args remote]
   ; if a commit on this remote triggered the build, use the revision that triggered it,
-  ; otherwise, use the head of master
+  ; otherwise, use the head of master. wait-for-git supplies the changed remote
   (if (= (:changed-remote args) remote)
     (:revision args)
     "master"))

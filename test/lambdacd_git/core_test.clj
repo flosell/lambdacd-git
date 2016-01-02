@@ -7,7 +7,6 @@
             [lambdacd-git.test-utils :refer [str-containing some-ctx-with]]
             [lambdacd.core :as lambdacd-core]
             [lambdacd.util :as util]
-            [clojure.data :as data]
             [clojure.java.io :as io]
             [lambdacd-git.git :as git]))
 
@@ -108,11 +107,14 @@
 (defn commit-hash-by-msg [state msg]
   (git-utils/commit-by-msg (:git @state) msg))
 
+(defn remote [state]
+  (get-in @state [:git :remote]))
+
 (defn step-result [state]
   (:step-result @state))
 
 (deftest wait-for-git-test-clean
-  (testing "that it waits for a new commit to happen and that it prints out information on old and new commit hashes"
+  (testing "that it waits for a new commit to happen and that it prints out information on old and new commit"
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")
@@ -122,6 +124,7 @@
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
       (is (= "refs/heads/master" (:changed-ref (step-result state))))
+      (is (= (remote state) (:changed-remote (step-result state))))
       (is (= (commit-hash-by-msg state "initial commit") (:old-revision (step-result state))))
       (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))
       (is (str-containing (commit-hash-by-msg state "initial commit") (:out (step-result state))))
