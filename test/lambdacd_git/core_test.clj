@@ -144,6 +144,7 @@
                     (git-commit "initial commit")
                     (git-checkout-b "some-branch")
                     (start-wait-for-git-step-with-ref (fn [ref] (.endsWith ref "some-branch")))
+                    (wait-a-bit)
                     (git-commit "other commit")
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
