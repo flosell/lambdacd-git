@@ -56,6 +56,21 @@ You'll find a complete example here: [example/simple_pipeline.clj](https://githu
     (with-workspace
       clone
       do-something)))
+
+; Works well with wait-for-git: 
+; If no revision is given (e.g. because of manual trigger), clone falls back to the head of the master branch
+
+(defn clone [args ctx]
+  (core/clone ctx repo (:revision args) (:cwd args)))
+
+(def pipeline-structure
+  `((either
+      wait-for-manual-trigger
+      wait-for-git)
+     (with-workspace
+       clone
+
+       do-something)))
 ```
 
 ### Get details on commits since last build

@@ -97,7 +97,8 @@
 
 (defn clone [ctx repo ref cwd]
   (support/capture-output ctx
-                          (let [git (git/clone-repo repo cwd)
+                          (let [ref (or ref "master")
+                                git (git/clone-repo repo cwd)
                                 existing-ref (git/find-ref git ref)]
                             (if existing-ref
                               (do

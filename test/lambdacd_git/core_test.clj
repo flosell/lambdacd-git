@@ -249,6 +249,20 @@
       (is (= :success (:status (step-result state))))
       (is (= "some content"
              (slurp (io/file workspace "some-file"))))))
+  (testing "that it falls back to head of master if ref is nil (e.g. because manual trigger instead of wait-for-git)"
+    (let [state (init-state)
+          workspace (util/create-temp-dir)]
+      (-> state
+          (git-init)
+          (git-add-file "some-file" "some content")
+          (git-commit "first commit")
+          (git-add-file "some-file" "some other content")
+          (git-commit "second commit")
+          (start-clone-step nil workspace)
+          (get-step-result))
+      (is (= :success (:status (step-result state))))
+      (is (= "some other content"
+             (slurp (io/file workspace "some-file"))))))
   (testing "that we can get information on the progress of a clone"
     (let [state (init-state)
           workspace (util/create-temp-dir)]
