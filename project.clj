@@ -14,4 +14,5 @@
   :test-paths ["test" "example"]
   :profiles {:dev      {:main         lambdacd-git.example.simple-pipeline
                         :dependencies [[compojure "1.1.8"]
-                                       [ring-server "0.3.1"]]}})
+                                       [ring-server "0.3.1"]]}
+             :silent   {:jvm-opts ["-Dlogback.configurationFile=./dev-resources/logback-silent.xml"]}})

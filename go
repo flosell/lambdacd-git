@@ -1,8 +1,14 @@
 #!/bin/bash 
 set -e
 
+SILENT="true"
+
 test() {
-  lein test
+  if [ "${SILENT}" == "true" ]; then
+    lein with-profile dev,silent test
+  else
+    lein test
+  fi
 }
 
 push() {
