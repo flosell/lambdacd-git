@@ -67,6 +67,17 @@
       (checkout-ref (git-from-dir workspace) "some-branch")
       (is (= "some content on branch"
              (slurp (io/file workspace "some-file"))))))
+  (testing "that we can checkout a tag"
+    (let [git-handle (-> (git-init)
+                         (git-add-file "some-file" "some content")
+                         (git-commit "some commit")
+                         (git-tag "some-tag")
+                         (git-add-file "some-file" "some other content")
+                         (git-commit "some other commit"))
+          workspace (:dir git-handle)]
+      (checkout-ref (git-from-dir workspace) "some-tag")
+      (is (= "some content"
+             (slurp (io/file workspace "some-file"))))))
   (testing "that we can checkout any commit"
     (let [git-handle (-> (git-init)
                          (git-add-file "some-file" "some content")
