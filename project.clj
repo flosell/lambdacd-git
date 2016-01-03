@@ -9,7 +9,7 @@
                  [com.jcraft/jsch.agentproxy.usocket-jna "0.0.8"]
                  [com.jcraft/jsch.agentproxy.sshagent "0.0.8"]
                  [me.raynes/conch "0.8.0"]
-                 [lambdacd "0.6.1-SNAPSHOT"]]
+                 [lambdacd "0.6.1"]]
   :repositories {"jgit-repository" "https://repo.eclipse.org/content/groups/releases/"}
   :test-paths ["test" "example"]
   :profiles {:dev      {:main         lambdacd-git.example.simple-pipeline
