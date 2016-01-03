@@ -234,6 +234,7 @@
     (let [state (-> (init-state)
                     (git-init)
                     (start-wait-for-git-step)
+                    (wait-a-bit)
                     (git-commit "initial commit")
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
