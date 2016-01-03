@@ -17,6 +17,10 @@
                                 (key))
         last-seen-revision (get old-revisions changed-ref)
         new-revision       (get new-revisions changed-ref)]
+    (binding [*out* *err*]
+      (println "new entries: " new-entries)
+      (if (> (count new-entries) 1)
+        (println "OMG IT COULD BE ANYTHING!")))
     {:changed-ref  changed-ref
      :revision     new-revision
      :old-revision last-seen-revision}))
