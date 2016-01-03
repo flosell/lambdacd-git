@@ -2,3 +2,6 @@ before_script:
 - ./scripts/travis_prebuild.sh
 language: clojure
 script: ./go test
+cache:
+  directories:
+  - $HOME/.m2
