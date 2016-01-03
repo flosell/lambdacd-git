@@ -45,6 +45,11 @@
                          (git-utils/git-checkout-b (:git %) new-ref)))
   state)
 
+(defn git-checkout [state new-ref]
+  (swap! state #(assoc % :git
+                         (git-utils/git-checkout (:git %) new-ref)))
+  state)
+
 (defn git-add-file [state file-name file-content]
   (swap! state #(assoc % :git
                          (git-utils/git-add-file (:git %) file-name file-content)))
@@ -183,17 +188,22 @@
   (testing "that we can pass a function that allows all refs"
     (let [state (-> (init-state)
                     (git-init)
-                    (start-wait-for-git-step-with-ref (fn [ref] true))
                     (git-commit "initial commit")
-                    (wait-for-step-to-complete)
-                    (start-wait-for-git-step-with-ref (fn [ref] true))
                     (git-checkout-b "some-branch")
-                    (git-commit "other commit")
+
+                    (start-wait-for-git-step-with-ref (fn [ref] true))
+                    (git-commit "some commit on master")
+                    (wait-for-step-to-complete)
+
+                    (git-checkout "some-branch")
+                    (start-wait-for-git-step-with-ref (fn [ref] true))
+                    (git-commit "some commit on branch")
+
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
-      (is (= nil (:old-revision (step-result state))))
-      (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))
-      (is (str-containing (commit-hash-by-msg state "other commit") (:out (step-result state))))))
+      (is (= (commit-hash-by-msg state "some commit on master") (:old-revision (step-result state))))
+      (is (= (commit-hash-by-msg state "some commit on branch") (:revision (step-result state))))
+      (is (str-containing (commit-hash-by-msg state "some commit on branch") (:out (step-result state))))))
   (testing "that it prints out information on old and new commit hashes"
     (let [state (-> (init-state)
                     (git-init)
