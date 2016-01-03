@@ -9,7 +9,8 @@ Will replace the `lambdacd.steps.git` namespace in the the lambdacd-git library.
 
 [![Clojars Project](http://clojars.org/lambdacd-git/latest-version.svg)](http://clojars.org/lambdacd-git)
 
-This library is under development and no stable version has been released yet.
+**This library is under development.** It has not yet been tested on real world projects and interfaces are subject to change
+without notice. So please play around, give feedback and think twice before using it in production. 
 
 ## Usage
 
