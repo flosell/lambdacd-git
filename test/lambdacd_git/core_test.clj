@@ -8,14 +8,24 @@
             [lambdacd.core :as lambdacd-core]
             [lambdacd.util :as util]
             [clojure.java.io :as io]
-            [lambdacd-git.git :as git]))
+            [lambdacd-git.git :as git]
+            [lambdacd.event-bus :as event-bus]))
 
-(defn init-state []
+(defn- status-updates-channel [ctx]
+  (let [step-result-updates-ch (event-bus/only-payload
+                                 (event-bus/subscribe ctx :step-result-updated))
+        only-status-updates    (async/chan 100 (map #(get-in % [:step-result :status])))]
+    (async/pipe step-result-updates-ch only-status-updates)
+    only-status-updates))
+
+(defn- init-state []
   (let [is-killed (atom false)
-        ctx (some-ctx-with :is-killed is-killed)]
+        ctx (some-ctx-with :is-killed is-killed)
+        step-status-channel (status-updates-channel ctx)]
     (pipeline-state/start-pipeline-state-updater (:pipeline-state-component ctx) ctx)
     (atom {:ctx ctx
-           :is-killed is-killed})))
+           :is-killed is-killed
+           :step-status-channel step-status-channel})))
 
 (defn git-init [state]
   (swap! state #(assoc % :git (git-utils/git-init)))
@@ -40,6 +50,22 @@
                          (git-utils/git-add-file (:git %) file-name file-content)))
   state)
 
+(defn read-channel-or-time-out [c & {:keys [timeout]
+                                     :or             {timeout 10000}}]
+  (async/alt!!
+    c ([result] result)
+    (async/timeout timeout) (throw (Exception. "timeout!"))))
+
+(defn wait-for-step-waiting [state]
+  (let [foo (:step-status-channel @state)]
+    (read-channel-or-time-out
+      (async/go
+        (loop []
+          (let [elem (async/<! foo)]
+            (if-not (= :waiting elem)
+              (recur)))))))
+  state)
+
 (defn start-wait-for-git-step-with-ref [state ref]
   (let [wait-for-result-channel (async/go
                                   (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
@@ -47,6 +73,7 @@
                                                                                           (wait-for-git ctx (get-in @state [:git :remote]) :ref ref :ms-between-polls 100)))]
                                     (first (vals (:outputs execute-step-result)))))]
     (swap! state #(assoc % :result-channel wait-for-result-channel))
+    (wait-for-step-waiting state)
     state))
 (defn start-wait-for-git-step [state]
   (let [wait-for-result-channel (async/go
@@ -55,6 +82,7 @@
                                                                                           (wait-for-git ctx (get-in @state [:git :remote]) :ms-between-polls 100)))]
                                     (first (vals (:outputs execute-step-result)))))]
     (swap! state #(assoc % :result-channel wait-for-result-channel))
+    (wait-for-step-waiting state)
     state))
 
 (defn start-clone-step [state ref cwd]
@@ -77,12 +105,6 @@
     (swap! state #(assoc % :result-channel wait-for-result-channel))
     state))
 
-(defn read-channel-or-time-out [c & {:keys [timeout]
-                           :or             {timeout 10000}}]
-  (async/alt!!
-    c ([result] result)
-    (async/timeout timeout) (throw (Exception. "timeout!"))))
-
 (defn kill-waiting-step [state]
   (reset! (:is-killed @state) true)
   state)
@@ -99,10 +121,6 @@
 (defn wait-for-step-to-complete [state]
   ; just an alias
   (get-step-result state))
-
-(defn wait-a-bit [state]
-  (Thread/sleep 500)
-  state)
 
 (defn commit-hash-by-msg [state msg]
   (git-utils/commit-by-msg (:git @state) msg))
@@ -128,7 +146,7 @@
                     (git-init)
                     (git-commit "initial commit")
                     (start-wait-for-git-step-with-ref "refs/heads/master")
-                    (wait-a-bit)
+                    (wait-for-step-waiting)
                     (git-commit "other commit")
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
@@ -144,7 +162,6 @@
                     (git-commit "initial commit")
                     (git-checkout-b "some-branch")
                     (start-wait-for-git-step-with-ref (fn [ref] (.endsWith ref "some-branch")))
-                    (wait-a-bit)
                     (git-commit "other commit")
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
@@ -157,7 +174,6 @@
                     (git-commit "initial commit")
                     (git-checkout-b "some-branch")
                     (start-wait-for-git-step-with-ref #"refs/heads/some-.*")
-                    (wait-a-bit)
                     (git-commit "other commit")
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
@@ -168,11 +184,9 @@
     (let [state (-> (init-state)
                     (git-init)
                     (start-wait-for-git-step-with-ref (fn [ref] true))
-                    (wait-a-bit)
                     (git-commit "initial commit")
                     (wait-for-step-to-complete)
                     (start-wait-for-git-step-with-ref (fn [ref] true))
-                    (wait-a-bit)
                     (git-checkout-b "some-branch")
                     (git-commit "other commit")
                     (get-step-result))]
@@ -185,7 +199,6 @@
                     (git-init)
                     (git-commit "initial commit")
                     (start-wait-for-git-step)
-                    (wait-a-bit)
                     (git-commit "other commit")
                     (get-step-result))]
       (is (str-containing (commit-hash-by-msg state "initial commit") (:out (step-result state))))
@@ -195,7 +208,6 @@
                     (git-init)
                     (git-commit "initial commit")
                     (start-wait-for-git-step)
-                    (wait-a-bit)
                     (git-commit "other commit")
                     (wait-for-step-to-complete)
                     (git-commit "commit while not waiting")
@@ -209,7 +221,6 @@
                     (git-init)
                     (git-commit "initial commit")
                     (start-wait-for-git-step)
-                    (wait-a-bit)
                     (kill-waiting-step)
                     (get-step-result))]
       (is (= :killed (:status (step-result state))))
@@ -218,7 +229,6 @@
     (let [state (-> (init-state)
                     (set-git-remote "some-uri-that-doesnt-exist")
                     (start-wait-for-git-step)
-                    (wait-a-bit)
                     (kill-waiting-step)
                     (get-step-result))]
       (is (= :killed (:status (step-result state))))))
@@ -226,7 +236,6 @@
     (let [state (-> (init-state)
                     (set-git-remote "some-uri-that-doesnt-exist")
                     (start-wait-for-git-step)
-                    (wait-a-bit)
                     (kill-waiting-step)
                     (get-step-result))]
       (is (str-containing "some-uri-that-doesnt-exist" (:out (step-result state))))))
@@ -234,7 +243,6 @@
     (let [state (-> (init-state)
                     (git-init)
                     (start-wait-for-git-step)
-                    (wait-a-bit)
                     (git-commit "initial commit")
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
