@@ -4,7 +4,8 @@
   (:import (org.eclipse.jgit.api Git)
            (org.eclipse.jgit.lib Ref TextProgressMonitor AnyObjectId)
            (java.io PrintWriter)
-           (org.eclipse.jgit.revwalk RevCommit RevWalk)))
+           (org.eclipse.jgit.revwalk RevCommit RevWalk)
+           (java.util Date)))
 
 (defn- ref->hash [^Ref ref]
   (-> ref
@@ -71,13 +72,26 @@
       (.call)))
 
 (defn- process-commit [^RevCommit ref]
-  (let [hash (-> ref
-                 (.getId)
-                 (.name))
-        msg (-> ref
-                (.getShortMessage))]
-    {:hash hash
-     :msg  msg}))
+  (let [hash   (-> ref
+                   (.getId)
+                   (.name))
+        msg    (-> ref
+                   (.getShortMessage))
+        name   (-> ref
+                   (.getAuthorIdent)
+                   (.getName))
+        email  (-> ref
+                   (.getAuthorIdent)
+                   (.getEmailAddress))
+        time   (-> ref
+                   (.getCommitTime)
+                   (* 1000)
+                   (Date.))
+        author (format "%s <%s>" name email)]
+    {:hash   hash
+     :msg    msg
+     :author author
+     :timestamp time}))
 
 (defn- ^Git git-open [workspace]
   (Git/open (io/file workspace)))

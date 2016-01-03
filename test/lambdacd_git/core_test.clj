@@ -113,6 +113,15 @@
 (defn step-result [state]
   (:step-result @state))
 
+(defn- expected-author [state]
+  (str (git-utils/git-user-name (:git @state)) " <" (git-utils/git-user-email (:git @state)) ">"))
+
+(defn- expected-iso-timestamp [state commit-msg]
+  (git-utils/commit-timestamp-iso (:git @state) (commit-hash-by-msg state commit-msg)))
+
+(defn- expected-timestamp [state commit-msg]
+  (git-utils/commit-timestamp-date (:git @state) (commit-hash-by-msg state commit-msg)))
+
 (deftest wait-for-git-test-clean
   (testing "that it waits for a new commit to happen and that it prints out information on old and new commit"
     (let [state (-> (init-state)
@@ -277,9 +286,13 @@
           (get-step-result))
       (testing "that it returns the changed commits"
         (is (= [{:hash (commit-hash-by-msg state "second commit")
-                 :msg  "second commit"}
+                 :msg  "second commit"
+                 :author (expected-author state)
+                 :timestamp (expected-timestamp state "second commit")}
                 {:hash (commit-hash-by-msg state "third commit")
-                 :msg  "third commit"}] (:commits (step-result state)))))
+                 :msg  "third commit"
+                 :author (expected-author state)
+                 :timestamp (expected-timestamp state "third commit")}] (:commits (step-result state)))))
       (testing "that it is successful"
         (is (= :success
                (:status (step-result state)))))
@@ -288,7 +301,11 @@
         (is (str-containing "third commit" (:out (step-result state)))))
       (testing "that it outputs the commit hashes"
         (is (str-containing (commit-hash-by-msg state "second commit") (:out (step-result state))))
-        (is (str-containing (commit-hash-by-msg state "third commit") (:out (step-result state)))))))
+        (is (str-containing (commit-hash-by-msg state "third commit") (:out (step-result state)))))
+      (testing "that it outputs the authors"
+        (is (str-containing (expected-author state) (:out (step-result state)))))
+      (testing "that it outputs formatted commit timestamps"
+        (is (str-containing (expected-iso-timestamp state "second commit") (:out (step-result state)))))))
   (testing "error handling"
     (testing "that an error is reported if no cwd is set"
       (let [state (init-state)]

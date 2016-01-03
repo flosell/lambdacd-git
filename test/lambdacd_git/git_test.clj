@@ -1,6 +1,7 @@
 (ns lambdacd-git.git-test
   (:require [clojure.test :refer :all]
-            [lambdacd-git.git-utils :refer [git-init git-add-file git-commit git-checkout-b git-checkout commit-by-msg git-tag]]
+            [lambdacd-git.git-utils :refer [git-init git-add-file git-commit git-checkout-b git-checkout commit-by-msg
+                                            git-tag git-user-name git-user-email commit-timestamp-date]]
             [lambdacd-git.git :refer :all]
             [lambdacd.util :as util]
             [lambdacd-git.test-utils :refer [str-containing]]
@@ -98,32 +99,46 @@
       (is (= "some content"
              (slurp (io/file workspace "some-file")))))))
 
-(deftest commit-details-test
+(defn- expected-author [git-handle]
+  (str (git-user-name git-handle) " <" (git-user-email git-handle) ">"))
+
+(defn expected-timestamp [git-handle commit-msg]
+  (commit-timestamp-date git-handle (commit-by-msg git-handle commit-msg)))
+
+(deftest commits-between-test
   (testing "that it returns the commits between two hashes excluding the first and including the last"
-    (let [git-handle (-> (git-init)
-                         (git-commit "first commit")
-                         (git-commit "second commit")
-                         (git-commit "third commit"))
-          first-commit (commit-by-msg git-handle "first commit")
+    (let [git-handle    (-> (git-init)
+                            (git-commit "first commit")
+                            (git-commit "second commit")
+                            (git-commit "third commit"))
+          first-commit  (commit-by-msg git-handle "first commit")
           second-commit (commit-by-msg git-handle "second commit")
-          third-commit (commit-by-msg git-handle "third commit")
-          workspace (:dir git-handle)]
-      (is (= [{:hash second-commit
-               :msg  "second commit"}
-              {:hash third-commit
-               :msg  "third commit"}]
+          third-commit  (commit-by-msg git-handle "third commit")
+          workspace     (:dir git-handle)]
+      (is (= [{:hash      second-commit
+               :msg       "second commit"
+               :author    (expected-author git-handle)
+               :timestamp (expected-timestamp git-handle "second commit")}
+              {:hash      third-commit
+               :msg       "third commit"
+               :author    (expected-author git-handle)
+               :timestamp (expected-timestamp git-handle "third commit")}]
              (commits-between workspace first-commit third-commit))))))
 
 (deftest get-single-commit-test
   (testing "that we can get commit information for a specific commit"
     (let [git-handle (-> (git-init)
                          (git-commit "some commit"))]
-      (is (= {:hash (commit-by-msg git-handle "some commit")
-              :msg "some commit"}
+      (is (= {:hash      (commit-by-msg git-handle "some commit")
+              :msg       "some commit"
+              :author    (expected-author git-handle)
+              :timestamp (expected-timestamp git-handle "some commit")}
              (get-single-commit (:dir git-handle) (commit-by-msg git-handle "some commit"))))))
   (testing "that we can get commit information for the HEAD commit"
     (let [git-handle (-> (git-init)
                          (git-commit "some commit"))]
-      (is (= {:hash (commit-by-msg git-handle "some commit")
-              :msg "some commit"}
+      (is (= {:hash      (commit-by-msg git-handle "some commit")
+              :msg       "some commit"
+              :author    (expected-author git-handle)
+              :timestamp (expected-timestamp git-handle "some commit")}
              (get-single-commit (:dir git-handle) "HEAD"))))))

@@ -6,7 +6,10 @@
             [lambdacd-git.git :as git]
             [clojure.data :refer [diff]]
             [clojure.java.io :as io])
-  (:import (java.util.regex Pattern)))
+  (:import (java.util.regex Pattern)
+           (java.util Date)
+           (java.time.format DateTimeFormatter)
+           (java.text SimpleDateFormat)))
 
 (defn- find-changed-revision [old-revisions new-revisions]
   (let [[_ new-entries _] (diff old-revisions new-revisions)
@@ -104,8 +107,12 @@
                                 (println "Failure: Could not find ref" ref)
                                 {:status :failure})))))
 
+(defn iso-format [^Date date]
+  (-> (SimpleDateFormat. "yyyy-MM-dd HH:mm:ss ZZZZ")
+      (.format date)))
+
 (defn- print-commit [commit]
-  (println (:hash commit) "|" (:msg commit)))
+  (println (:hash commit) "|" (iso-format (:timestamp commit)) "|" (:author commit) "|" (:msg commit)))
 
 (defn- output-commits [commits]
   (doall

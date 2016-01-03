@@ -3,7 +3,8 @@
             [clojure.java.io :as io]
             [clojure.string :as s])
   (:import (java.nio.file Files)
-           (java.nio.file.attribute FileAttribute)))
+           (java.nio.file.attribute FileAttribute)
+           (java.util Date)))
 
 
 
@@ -54,7 +55,25 @@
   (git git-handle "tag" tag)
   git-handle)
 
+(defn git-user-name [git-handle]
+  (s/trim (git git-handle "config" "--get" "user.name")))
+
+(defn git-user-email [git-handle]
+  (s/trim (git git-handle "config" "--get" "user.email")))
+
 (defn commit-by-msg [git-handle msg]
   (or
     (get-in git-handle [:commits-by-msg msg :hash])
     (throw (Exception. (str "no hash found for " msg)))))
+
+(defn commit-timestamp-iso [git-handle hash]
+  (git git-handle "show" "--pretty=format:%cd" "--date=iso" hash))
+
+(defn commit-timestamp-date [git-handle hash]
+  (let [timestamp (git git-handle "show" "--pretty=format:%ct"  hash)]
+    (println timestamp)
+    (-> timestamp
+        (s/trim)
+        (Integer/parseInt)
+        (* 1000)
+        (Date.))))
