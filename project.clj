@@ -11,6 +11,8 @@
                  [me.raynes/conch "0.8.0"]
                  [lambdacd "0.6.1"]]
   :repositories {"jgit-repository" "https://repo.eclipse.org/content/groups/releases/"}
+  :deploy-repositories [["clojars" {:creds :gpg}]
+                        ["releases" :clojars]]
   :test-paths ["test" "example"]
   :profiles {:dev      {:main         lambdacd-git.example.simple-pipeline
                         :dependencies [[compojure "1.1.8"]
