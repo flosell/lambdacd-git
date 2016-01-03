@@ -16,7 +16,7 @@
 
 (defn wait-for-git [args ctx]
   (core/wait-for-git ctx repo
-                     :ref (git/match-all-refs)
+                     :ref "refs/heads/master"
                      :ms-between-polls 1000))
 
 (defn clone [args ctx]

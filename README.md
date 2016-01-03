@@ -27,10 +27,22 @@ You'll find a complete example here: [example/simple_pipeline.clj](https://githu
 ### Waiting for a commit
 
 ```clojure
-(defn wait-for-git [args ctx]
-      (lambdacd-git/wait-for-git ctx "git@github.com:flosell/testrepo"
-                     :branch "master"
-                     :ms-between-polls 1000))
+(defn wait-for-commit-on-master [args ctx]
+  (lambdacd-git/wait-for-git ctx "git@github.com:flosell/testrepo"
+                             ; how long to wait when polling. optional, defaults to 10000
+                             :ms-between-polls 1000
+                             ; which refs to react to. optional, defaults to refs/heads/master
+                             :ref "refs/heads/master"))
+
+; you can also pass in a regex:
+(defn wait-for-commit-on-feature-branch [args ctx]
+  (lambdacd-git/wait-for-git ctx "git@github.com:flosell/testrepo"
+                             :ref #"refs/heads/feature-.*"))
+
+; you can also pass in a function
+(defn wait-for-commit-on-any-tag [args ctx]
+  (lambdacd-git/wait-for-git ctx "git@github.com:flosell/testrepo"
+                             :ref (fn [ref] (.startsWith ref "refs/tags/"))))
 ```
 
 ### Cloning a Repository

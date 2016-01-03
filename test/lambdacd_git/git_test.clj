@@ -13,6 +13,14 @@
 (defn no-branches []
   (constantly false))
 
+(defn match-branch [branch]
+  (match-ref (str "refs/heads/" branch)))
+
+(defn match-tag [tag]
+  (match-ref (str "refs/tags/" tag)))
+
+(defn match-all-refs []
+  (constantly true))
 
 (deftest current-revision-test
   (testing "that it can get the head of the master branch"

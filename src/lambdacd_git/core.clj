@@ -84,7 +84,7 @@
   "step that waits for the head of a ref to change"
   [ctx remote & {:keys [ref ms-between-polls]
                  :or   {ms-between-polls (* 10 1000)
-                        ref              (git/match-branch "master")}}]
+                        ref              "refs/heads/master"}}]
   (support/capture-output ctx
     (report-waiting-status ctx)
     (let [ref-pred          (to-ref-pred ref)

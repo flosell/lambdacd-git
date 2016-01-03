@@ -15,18 +15,9 @@
   (fn [other-ref]
     (= other-ref ref)))
 
-(defn match-branch [branch]
-  (match-ref (str "refs/heads/" branch)))
-
-(defn match-tag [tag]
-  (match-ref (str "refs/tags/" tag)))
-
 (defn match-ref-by-regex [regex]
   (fn [other-branch]
     (re-matches regex other-branch)))
-
-(defn match-all-refs []
-  (constantly true))
 
 (defn- entry-to-ref-and-hash [entry]
   [(key entry) (ref->hash (val entry))])

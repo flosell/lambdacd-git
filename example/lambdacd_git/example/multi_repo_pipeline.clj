@@ -19,7 +19,7 @@
 (defn wait-for [remote]
   (fn [args ctx]
     (core/wait-for-git ctx remote
-                       :ref (git/match-branch "master")
+                       :ref "refs/heads/master"
                        :ms-between-polls 1000)))
 
 (defn- revision-or-master [args remote]
