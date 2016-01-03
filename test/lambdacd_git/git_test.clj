@@ -1,6 +1,6 @@
 (ns lambdacd-git.git-test
   (:require [clojure.test :refer :all]
-            [lambdacd-git.git-utils :refer [git-init git-add-file git-commit git-checkout-b git-checkout commit-by-msg]]
+            [lambdacd-git.git-utils :refer [git-init git-add-file git-commit git-checkout-b git-checkout commit-by-msg git-tag]]
             [lambdacd-git.git :refer :all]
             [lambdacd.util :as util]
             [lambdacd-git.test-utils :refer [str-containing]]
@@ -29,11 +29,20 @@
       (is (= {"refs/heads/some-branch" (commit-by-msg git-handle "some commit on branch")
               "refs/heads/master"      (commit-by-msg git-handle "some commit on master")}
              (current-revisions (:remote git-handle) (match-all-refs))))))
-  (testing "that it returns an emtpy map if no branch matches"
+  (testing "that it returns an emtpy map if no ref matches"
     (let [git-handle (-> (git-init)
                          (git-commit "some commit on master"))]
       (is (= {}
-             (current-revisions (:remote git-handle) (no-branches)))))))
+             (current-revisions (:remote git-handle) (no-branches))))))
+  (testing "that it can get the head of tags"
+    (let [git-handle (-> (git-init)
+                         (git-commit "some commit on master")
+                         (git-tag "some-tag"))]
+      (is (= {"refs/heads/master"  (commit-by-msg git-handle "some commit on master")
+              "refs/tags/some-tag" (commit-by-msg git-handle "some commit on master")}
+             (current-revisions (:remote git-handle) (match-all-refs))))
+      (is (= {"refs/tags/some-tag" (commit-by-msg git-handle "some commit on master")}
+             (current-revisions (:remote git-handle) (match-tag "some-tag")))))))
 
 (deftest clone-repo-test
   (testing "that we can clone the head of master"

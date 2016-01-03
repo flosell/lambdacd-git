@@ -18,6 +18,9 @@
 (defn match-branch [branch]
   (match-ref (str "refs/heads/" branch)))
 
+(defn match-tag [tag]
+  (match-ref (str "refs/tags/" tag)))
+
 (defn match-ref-by-regex [regex]
   (fn [other-branch]
     (re-matches regex other-branch)))
@@ -28,13 +31,14 @@
 (defn- entry-to-ref-and-hash [entry]
   [(key entry) (ref->hash (val entry))])
 
-(defn current-revisions [remote branch-pred]
+(defn current-revisions [remote ref-filter-pred]
   (let [ref-map (-> (Git/lsRemoteRepository)
                     (.setHeads true)
+                    (.setTags true)
                     (.setRemote remote)
                     (.callAsMap))]
     (->> ref-map
-         (filter #(branch-pred (key %)))
+         (filter #(ref-filter-pred (key %)))
          (map entry-to-ref-and-hash)
          (into {}))))
 

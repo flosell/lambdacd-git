@@ -50,6 +50,10 @@
   (git git-handle "checkout" branch)
   git-handle)
 
+(defn git-tag [git-handle tag]
+  (git git-handle "tag" tag)
+  git-handle)
+
 (defn commit-by-msg [git-handle msg]
   (or
     (get-in git-handle [:commits-by-msg msg :hash])
