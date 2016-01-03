@@ -42,7 +42,11 @@
      :old-revision   (:old-revision changes)
      :all-revisions  current-revisions}))
 
+(defn- report-waiting-status [ctx]
+  (async/>!! (:result-channel ctx) [:status :waiting]))
+
 (defn- wait-for-revision-changed [last-seen-revisions remote ref ctx ms-between-polls]
+  (report-waiting-status ctx)
   (println "Last seen revisions:" (or last-seen-revisions "None") ". Waiting for new commit...")
   (loop [last-seen-revisions last-seen-revisions]
     (support/if-not-killed ctx
@@ -79,16 +83,12 @@
     (regex? ref-spec) (git/match-ref-by-regex ref-spec)
     :else ref-spec))
 
-(defn- report-waiting-status [ctx]
-  (async/>!! (:result-channel ctx) [:status :waiting]))
-
 (defn wait-for-git
   "step that waits for the head of a ref to change"
   [ctx remote & {:keys [ref ms-between-polls]
                  :or   {ms-between-polls (* 10 1000)
                         ref              "refs/heads/master"}}]
   (support/capture-output ctx
-    (report-waiting-status ctx)
     (let [ref-pred          (to-ref-pred ref)
           initial-revisions (initial-revisions ctx remote ref-pred)
           wait-for-result   (wait-for-revision-changed initial-revisions remote ref-pred ctx ms-between-polls)]
