@@ -8,7 +8,6 @@
             [clojure.java.io :as io])
   (:import (java.util.regex Pattern)
            (java.util Date)
-           (java.time.format DateTimeFormatter)
            (java.text SimpleDateFormat)))
 
 (defn- find-changed-revision [old-revisions new-revisions]
