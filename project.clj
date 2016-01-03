@@ -1,8 +1,8 @@
 (defproject lambdacd-git "0.1.1-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :description "Git support for LambdaCD"
+  :url "https://github.com/flosell/lambdacd-git"
+  :license {:name "Apache License, version 2.0"
+            :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.eclipse.jgit/org.eclipse.jgit "4.1.1.201511131810-r"]
                  [com.jcraft/jsch.agentproxy.jsch "0.0.8"]
