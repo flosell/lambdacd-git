@@ -49,7 +49,7 @@ You'll find a complete example here: [example/simple_pipeline.clj](https://githu
 
 ```clojure
 (defn clone [args ctx]
-  (lambdacd-git/clone ctx repo branch (:cwd args)))
+  (lambdacd-git/clone ctx repo branch-or-tag-or-commit-hash (:cwd args)))
 
 (def pipeline-structure
   `(; ...
@@ -62,7 +62,7 @@ You'll find a complete example here: [example/simple_pipeline.clj](https://githu
 
 ```clojure
 (defn clone [args ctx]
-  (lambdacd-git/clone ctx repo branch (:cwd args)))
+  (lambdacd-git/clone ctx repo branch-or-tag-or-commit-hash (:cwd args)))
 
 (def pipeline-structure
   `(wait-for-git
@@ -78,9 +78,9 @@ You can have clone steps that clone into different subdirectories:
 
 ```clojure
 (defn clone-foo [args ctx]
-  (lambdacd-git/clone ctx repo branch (str (:cwd args) "/" "foo")))
+  (lambdacd-git/clone ctx repo branch-or-tag-or-commit-hash (str (:cwd args) "/" "foo")))
 (defn clone-bar [args ctx]
-  (lambdacd-git/clone ctx repo branch (str (:cwd args) "/" "bar")))
+  (lambdacd-git/clone ctx repo branch-or-tag-or-commit-hash (str (:cwd args) "/" "bar")))
 
 (def pipeline-structure
   `(; ... 
