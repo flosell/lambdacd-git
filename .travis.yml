@@ -5,5 +5,3 @@ script: ./go test
 cache:
   directories:
   - $HOME/.m2
-jdk:
-  - oraclejdk8
