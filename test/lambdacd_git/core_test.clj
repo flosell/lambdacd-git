@@ -157,6 +157,7 @@
                     (git-commit "initial commit")
                     (git-checkout-b "some-branch")
                     (start-wait-for-git-step-with-ref #"refs/heads/some-.*")
+                    (wait-a-bit)
                     (git-commit "other commit")
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
@@ -167,9 +168,11 @@
     (let [state (-> (init-state)
                     (git-init)
                     (start-wait-for-git-step-with-ref (fn [ref] true))
+                    (wait-a-bit)
                     (git-commit "initial commit")
                     (wait-for-step-to-complete)
                     (start-wait-for-git-step-with-ref (fn [ref] true))
+                    (wait-a-bit)
                     (git-checkout-b "some-branch")
                     (git-commit "other commit")
                     (get-step-result))]
