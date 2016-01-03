@@ -71,7 +71,6 @@
 
 (defn commit-timestamp-date [git-handle hash]
   (let [timestamp (git git-handle "show" "--pretty=format:%ct"  hash)]
-    (println timestamp)
     (-> timestamp
         (s/trim)
         (Integer/parseInt)
