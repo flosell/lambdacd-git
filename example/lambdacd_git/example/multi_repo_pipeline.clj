@@ -51,10 +51,12 @@
 
 (defn -main [& args]
   (let [home-dir (util/create-temp-dir)
-        config {:home-dir home-dir}
+        config   {:home-dir home-dir}
         pipeline (lambdacd/assemble-pipeline pipeline-structure config)]
     (ssh-agent-support/initialize-ssh-agent-support!)
     (runners/start-one-run-after-another pipeline)
-    (ring-server/serve (ui/ui-for pipeline)
-                                  {:open-browser? false
-                                   :port 8082})))
+    (ring-server/serve (routes
+                         (ui/ui-for pipeline)
+                         (core/notifications-for pipeline))
+                       {:open-browser? false
+                        :port          8082})))
