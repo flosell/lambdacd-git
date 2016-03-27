@@ -51,8 +51,8 @@
 
 (defn- wait-for-next-poll [poll-notifications ms-between-polls]
   (async/alt!!
-    poll-notifications nil
-    (async/timeout ms-between-polls) nil))
+    poll-notifications ([_] (println "Received notification. Polling out of schedule"))
+    (async/timeout ms-between-polls) :poll))
 
 (defn- wait-for-revision-changed [last-seen-revisions remote ref ctx ms-between-polls poll-notifications]
   (report-waiting-status ctx)

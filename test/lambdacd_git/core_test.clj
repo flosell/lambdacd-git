@@ -169,7 +169,8 @@
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
       (is (= "refs/heads/master" (:changed-ref (step-result state))))
-      (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))))
+      (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))
+      (is (str-containing "Received notification. Polling out of schedule" (:out (step-result state))))))
   (testing "that notifications on the event bus for other remotes are ignored"
     (let [state (-> (init-state)
                     (git-init)
