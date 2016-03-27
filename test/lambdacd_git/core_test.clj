@@ -1,6 +1,6 @@
 (ns lambdacd-git.core-test
-  (:require [clojure.test :refer :all]
-            [lambdacd-git.core :refer :all]
+  (:require [clojure.test :refer :all :refer-macros [thrown?]]
+            [lambdacd-git.core :refer :all :as core]
             [lambdacd-git.git-utils :as git-utils]
             [clojure.core.async :as async]
             [lambdacd.internal.pipeline-state :as pipeline-state]
@@ -8,7 +8,6 @@
             [lambdacd.core :as lambdacd-core]
             [lambdacd.util :as util]
             [clojure.java.io :as io]
-            [lambdacd-git.git :as git]
             [lambdacd.event-bus :as event-bus]))
 
 (defn- status-updates-channel [ctx]
@@ -54,6 +53,8 @@
   (swap! state #(assoc % :git
                          (git-utils/git-add-file (:git %) file-name file-content)))
   state)
+
+(def wait-for-step-finished 10000)
 
 (defn read-channel-or-time-out [c & {:keys [timeout]
                                      :or             {timeout 10000}}]
@@ -106,18 +107,18 @@
   (reset! (:is-killed @state) true)
   state)
 
-(defn get-step-result [state]
+(defn get-step-result [state & {:keys [timeout] :or {timeout wait-for-step-finished}}]
   (try
-    (let [result (read-channel-or-time-out (:result-channel @state))]
+    (let [result (read-channel-or-time-out (:result-channel @state) :timeout timeout)]
       (swap! state #(assoc % :step-result result))
       state)
     (catch Exception e
       (kill-waiting-step state)
       (throw e))))
 
-(defn wait-for-step-to-complete [state]
+(defn wait-for-step-to-complete [state & args]
   ; just an alias
-  (get-step-result state))
+  (apply get-step-result state args))
 
 (defn commit-hash-by-msg [state msg]
   (git-utils/commit-by-msg (:git @state) msg))
@@ -137,6 +138,10 @@
 (defn- expected-timestamp [state commit-msg]
   (git-utils/commit-timestamp-date (:git @state) (commit-hash-by-msg state commit-msg)))
 
+(defn- trigger-notification [state & {:keys [remote-to-notify] :or { remote-to-notify nil}}]
+  (event-bus/publish (:ctx @state) ::core/git-remote-poll-notification {:remote (or remote-to-notify (remote state))})
+  state)
+
 (deftest wait-for-git-test
   (testing "that it waits for a new commit to happen and that it prints out information on old and new commit"
     (let [state (-> (init-state)
@@ -153,6 +158,27 @@
       (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))
       (is (str-containing (commit-hash-by-msg state "initial commit") (:out (step-result state))))
       (is (str-containing "on refs/heads/master" (:out (step-result state))))))
+  (testing "that notifications on the event bus trigger polling"
+    (let [state (-> (init-state)
+                    (git-init)
+                    (git-commit "initial commit")
+                    (start-wait-for-git-step :ref "refs/heads/master" :ms-between-polls (* 2 wait-for-step-finished))
+                    (wait-for-step-waiting)
+                    (git-commit "other commit")
+                    (trigger-notification)
+                    (get-step-result))]
+      (is (= :success (:status (step-result state))))
+      (is (= "refs/heads/master" (:changed-ref (step-result state))))
+      (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))))
+  (testing "that notifications on the event bus for other remotes are ignored"
+    (let [state (-> (init-state)
+                    (git-init)
+                    (git-commit "initial commit")
+                    (start-wait-for-git-step :ref "refs/heads/master" :ms-between-polls (* 2 wait-for-step-finished))
+                    (wait-for-step-waiting)
+                    (git-commit "other commit")
+                    (trigger-notification :remote-to-notify "some-other-remote"))]
+      (is (thrown? Exception (wait-for-step-to-complete state :timeout 500)))))
   (testing "that we can pass a function to filter refs we want to react on"
     (let [state (-> (init-state)
                     (git-init)
@@ -165,7 +191,7 @@
       (is (= (commit-hash-by-msg state "initial commit") (:old-revision (step-result state))))
       (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))
       (is (str-containing (commit-hash-by-msg state "other commit") (:out (step-result state))))))
-  (testing "that we can pass a regex to filter refes we want to react on"
+  (testing "that we can pass a regex to filter refs we want to react on"
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")

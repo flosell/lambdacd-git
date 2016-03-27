@@ -5,7 +5,8 @@
             [lambdacd.presentation.pipeline-state :as pipeline-state]
             [lambdacd-git.git :as git]
             [clojure.data :refer [diff]]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [lambdacd.event-bus :as event-bus])
   (:import (java.util.regex Pattern)
            (java.util Date)
            (java.text SimpleDateFormat)))
@@ -45,7 +46,12 @@
 (defn- report-waiting-status [ctx]
   (async/>!! (:result-channel ctx) [:status :waiting]))
 
-(defn- wait-for-revision-changed [last-seen-revisions remote ref ctx ms-between-polls]
+(defn- wait-for-next-poll [poll-notifications ms-between-polls]
+  (async/alt!!
+    poll-notifications nil
+    (async/timeout ms-between-polls) nil))
+
+(defn- wait-for-revision-changed [last-seen-revisions remote ref ctx ms-between-polls poll-notifications]
   (report-waiting-status ctx)
   (println "Last seen revisions:" (or last-seen-revisions "None") ". Waiting for new commit...")
   (loop [last-seen-revisions last-seen-revisions]
@@ -56,7 +62,7 @@
               (not= current-revisions last-seen-revisions))
           (found-new-commit remote last-seen-revisions current-revisions)
           (do
-            (Thread/sleep ms-between-polls)
+            (wait-for-next-poll poll-notifications ms-between-polls)
             (recur current-revisions)))))))
 
 (defn- last-seen-revisions-from-history [ctx]
@@ -83,16 +89,26 @@
     (regex? ref-spec) (git/match-ref-by-regex ref-spec)
     :else ref-spec))
 
+(defn only-matching-remote [remote c]
+  (let [filtering-chan (async/chan 1 (filter #(= remote (:remote %))))]
+    (async/pipe c filtering-chan)
+    filtering-chan))
+
 (defn wait-for-git
   "step that waits for the head of a ref to change"
   [ctx remote & {:keys [ref ms-between-polls]
                  :or   {ms-between-polls (* 10 1000)
                         ref              "refs/heads/master"}}]
   (support/capture-output ctx
-    (let [ref-pred          (to-ref-pred ref)
-          initial-revisions (initial-revisions ctx remote ref-pred)
-          wait-for-result   (wait-for-revision-changed initial-revisions remote ref-pred ctx ms-between-polls)]
-      (persist-last-seen-revisions wait-for-result initial-revisions ctx))))
+    (let [ref-pred                  (to-ref-pred ref)
+          initial-revisions         (initial-revisions ctx remote ref-pred)
+          remote-poll-subscription  (event-bus/subscribe ctx ::git-remote-poll-notification)
+          remote-poll-notifications (only-matching-remote remote
+                                      (event-bus/only-payload remote-poll-subscription))
+          wait-for-result           (wait-for-revision-changed initial-revisions remote ref-pred ctx ms-between-polls remote-poll-notifications)
+          result                    (persist-last-seen-revisions wait-for-result initial-revisions ctx)]
+      (event-bus/unsubscribe ctx ::git-remote-poll-notification remote-poll-subscription)
+      result)))
 
 (defn clone [ctx repo ref cwd]
   (support/capture-output ctx
