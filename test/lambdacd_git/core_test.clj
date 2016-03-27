@@ -71,20 +71,12 @@
               (recur)))))))
   state)
 
-(defn start-wait-for-git-step-with-ref [state ref]
+(defn start-wait-for-git-step [state & {:keys [ref ms-between-polls] :or {ms-between-polls 100
+                                                                              ref          "refs/heads/master"}}]
   (let [wait-for-result-channel (async/go
                                   (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
                                                                                         (fn [args ctx]
-                                                                                          (wait-for-git ctx (get-in @state [:git :remote]) :ref ref :ms-between-polls 100)))]
-                                    (first (vals (:outputs execute-step-result)))))]
-    (swap! state #(assoc % :result-channel wait-for-result-channel))
-    (wait-for-step-waiting state)
-    state))
-(defn start-wait-for-git-step [state]
-  (let [wait-for-result-channel (async/go
-                                  (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
-                                                                                        (fn [args ctx]
-                                                                                          (wait-for-git ctx (get-in @state [:git :remote]) :ms-between-polls 100)))]
+                                                                                          (wait-for-git ctx (get-in @state [:git :remote]) :ref ref :ms-between-polls ms-between-polls)))]
                                     (first (vals (:outputs execute-step-result)))))]
     (swap! state #(assoc % :result-channel wait-for-result-channel))
     (wait-for-step-waiting state)
@@ -145,12 +137,12 @@
 (defn- expected-timestamp [state commit-msg]
   (git-utils/commit-timestamp-date (:git @state) (commit-hash-by-msg state commit-msg)))
 
-(deftest wait-for-git-test-clean
+(deftest wait-for-git-test
   (testing "that it waits for a new commit to happen and that it prints out information on old and new commit"
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")
-                    (start-wait-for-git-step-with-ref "refs/heads/master")
+                    (start-wait-for-git-step :ref "refs/heads/master")
                     (wait-for-step-waiting)
                     (git-commit "other commit")
                     (get-step-result))]
@@ -166,7 +158,7 @@
                     (git-init)
                     (git-commit "initial commit")
                     (git-checkout-b "some-branch")
-                    (start-wait-for-git-step-with-ref (fn [ref] (.endsWith ref "some-branch")))
+                    (start-wait-for-git-step :ref (fn [ref] (.endsWith ref "some-branch")))
                     (git-commit "other commit")
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
@@ -178,7 +170,7 @@
                     (git-init)
                     (git-commit "initial commit")
                     (git-checkout-b "some-branch")
-                    (start-wait-for-git-step-with-ref #"refs/heads/some-.*")
+                    (start-wait-for-git-step :ref #"refs/heads/some-.*")
                     (git-commit "other commit")
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
@@ -191,12 +183,12 @@
                     (git-commit "initial commit")
                     (git-checkout-b "some-branch")
 
-                    (start-wait-for-git-step-with-ref (fn [ref] true))
+                    (start-wait-for-git-step :ref (fn [ref] true))
                     (git-commit "some commit on master")
                     (wait-for-step-to-complete)
 
                     (git-checkout "some-branch")
-                    (start-wait-for-git-step-with-ref (fn [ref] true))
+                    (start-wait-for-git-step :ref (fn [ref] true))
                     (git-commit "some commit on branch")
 
                     (get-step-result))]
@@ -371,5 +363,4 @@
             (get-step-result))
         (is (str-containing "Current HEAD" (:out (step-result state))))
         (is (str-containing (commit-hash-by-msg state "some commit") (:out (step-result state))))
-        (is (= :success (:status (step-result state)))))
-      )))
+        (is (= :success (:status (step-result state))))))))
