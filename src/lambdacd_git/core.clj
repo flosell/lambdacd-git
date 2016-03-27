@@ -9,7 +9,8 @@
             [lambdacd.event-bus :as event-bus]
             [clojure.walk :as walk]
             [ring.middleware.params :as ring-params]
-            [ring.util.response :as ring-response])
+            [ring.util.response :as ring-response]
+            [compojure.core :as compojure])
   (:import (java.util.regex Pattern)
            (java.util Date)
            (java.text SimpleDateFormat)))
@@ -174,3 +175,6 @@
               "Mandatory parameter 'remote' not found. Example: <host>/notify-git?remote=git@github.com:flosell/testrepo")
             (ring-response/content-type "text/plain")
             (ring-response/status 400))))))
+
+(defn notifications-for [pipeline]
+  (compojure/POST "/notify-git" request (notify-git-handler (:context pipeline) request)))

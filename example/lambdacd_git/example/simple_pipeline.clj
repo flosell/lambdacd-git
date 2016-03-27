@@ -36,8 +36,8 @@
 
 (defn all-routes [pipeline]
   (routes
-    (POST "/notify-git" request (core/notify-git-handler (:context pipeline) request))
-    (context "" [] (ui/ui-for pipeline))))
+    (ui/ui-for pipeline)
+    (core/notifications-for pipeline)))
 
 (defn -main [& args]
   (let [home-dir (util/create-temp-dir)

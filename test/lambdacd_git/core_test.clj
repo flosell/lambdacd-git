@@ -8,7 +8,8 @@
             [lambdacd.core :as lambdacd-core]
             [lambdacd.util :as util]
             [clojure.java.io :as io]
-            [lambdacd.event-bus :as event-bus]))
+            [lambdacd.event-bus :as event-bus]
+            [ring.mock.request :as ring-mock]))
 
 (defn- status-updates-channel [ctx]
   (let [step-result-updates-ch (event-bus/only-payload
@@ -139,7 +140,8 @@
   (git-utils/commit-timestamp-date (:git @state) (commit-hash-by-msg state commit-msg)))
 
 (defn- trigger-notification [state & {:keys [remote-to-notify] :or { remote-to-notify nil}}]
-  (core/notify-git-handler (:ctx @state) {:query-string (str "remote="(or remote-to-notify (remote state)))})
+  ((core/notifications-for {:context (:ctx @state)})
+    (ring-mock/request :post (str "/notify-git?remote="(or remote-to-notify (remote state)))))
   state)
 
 (deftest wait-for-git-test
