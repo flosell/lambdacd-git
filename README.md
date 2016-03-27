@@ -46,6 +46,22 @@ You'll find a complete example here: [example/simple_pipeline.clj](https://githu
                              :ref (fn [ref] (.startsWith ref "refs/tags/"))))
 ```
 
+### Using Web- or Post-Commit Hooks instead of Polling
+
+`wait-for-git` can be notified about changes in a repository through an HTTP endpoint. To use this, you need to add it
+to your existing ring-handlers:
+
+```clojure
+(ring-server/serve (routes
+                         (ui/ui-for pipeline)
+                         (core/notifications-for pipeline)) ; <-- THIS
+                       {:open-browser? false
+                        :port          8082})
+```
+
+This adds an HTTP endpoint that can receive POST requests on `<host>/notify-git?remote=<remote>`,
+e.g. `http://localhost:8082/notify-git?remote=git@github.com:flosell/testrepo`
+
 ### Cloning a Repository
 
 ```clojure
