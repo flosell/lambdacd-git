@@ -9,7 +9,8 @@
                  [com.jcraft/jsch.agentproxy.usocket-jna "0.0.8"]
                  [com.jcraft/jsch.agentproxy.sshagent "0.0.8"]
                  [me.raynes/conch "0.8.0"]
-                 [lambdacd "0.6.1"]]
+                 [lambdacd "0.6.1"]
+                 [ring/ring-core "1.2.2"]]
   :repositories {"jgit-repository" "https://repo.eclipse.org/content/groups/releases/"}
   :deploy-repositories [["clojars" {:creds :gpg}]
                         ["releases" :clojars]]

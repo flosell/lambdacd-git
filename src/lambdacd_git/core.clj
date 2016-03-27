@@ -6,7 +6,10 @@
             [lambdacd-git.git :as git]
             [clojure.data :refer [diff]]
             [clojure.java.io :as io]
-            [lambdacd.event-bus :as event-bus])
+            [lambdacd.event-bus :as event-bus]
+            [clojure.walk :as walk]
+            [ring.middleware.params :as ring-params]
+            [ring.util.response :as ring-response])
   (:import (java.util.regex Pattern)
            (java.util Date)
            (java.text SimpleDateFormat)))
@@ -155,3 +158,19 @@
                                                        (println "Current HEAD:")
                                                        (output-commits [(git/get-single-commit cwd "HEAD")]))
         :else (output-commits (git/commits-between cwd old-revision new-revision))))))
+
+(defn notify-git-handler [ctx request]
+  (let [real-req (walk/keywordize-keys (ring-params/params-request request))
+        remote   (get-in real-req [:query-params :remote])]
+    (if remote
+      (do
+        (log/debug "Notifying git about update on remote" remote)
+        (event-bus/publish ctx ::git-remote-poll-notification {:remote remote})
+        (-> (ring-response/response "")
+            (ring-response/status 204)))
+      (do
+        (log/debug "Received invalid git notification: 'remote' was missing")
+        (-> (ring-response/response
+              "Mandatory parameter 'remote' not found. Example: <host>/notify-git?remote=git@github.com:flosell/testrepo")
+            (ring-response/content-type "text/plain")
+            (ring-response/status 400))))))

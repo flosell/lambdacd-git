@@ -139,7 +139,7 @@
   (git-utils/commit-timestamp-date (:git @state) (commit-hash-by-msg state commit-msg)))
 
 (defn- trigger-notification [state & {:keys [remote-to-notify] :or { remote-to-notify nil}}]
-  (event-bus/publish (:ctx @state) ::core/git-remote-poll-notification {:remote (or remote-to-notify (remote state))})
+  (core/notify-git-handler (:ctx @state) {:query-string (str "remote="(or remote-to-notify (remote state)))})
   state)
 
 (deftest wait-for-git-test
