@@ -15,7 +15,7 @@ Will replace the `lambdacd.steps.git` namespace in the the lambdacd-git library.
 ;; project.clj
 :dependencies [[lambdacd-git "<most recent version>"]]
 ;; import:
-(:require [lambdacd-git.lambdacd-git :as lambdacd-git])
+(:require [lambdacd-git.core :as lambdacd-git])
 ```
 
 ### Complete Example
