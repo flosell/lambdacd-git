@@ -3,6 +3,7 @@
 ## 0.1.2
 
 * Improvements
+  * Made step-killing behavior of `wait-for-git` independent of polling frequency (#10)
   * Supporting known hosts files other than `~/.ssh/known_hosts` (e.g. `/etc/ssh/ssh_known_hosts`). (#9)
     Call `lambdacd-git.core/init-ssh!` instead of `lambdacd-git.ssh-agent-support/initialize-ssh-agent-support!` (which is now deprecated)
   * `lambdcd-git/ssh-agent-support/initialize-ssh-agent-support!` is deprecated and will be removed in subsequent releases.

@@ -256,6 +256,14 @@
                     (get-step-result))]
       (is (= :killed (:status (step-result state))))
       (is (= {"refs/heads/master" (commit-hash-by-msg state "initial commit")} (:_git-last-seen-revisions (step-result state))))))
+  (testing "that wait-for can be killed quickly even if it is polling very slowly"
+    (let [state (-> (init-state)
+                    (git-init)
+                    (git-commit "initial commit")
+                    (start-wait-for-git-step :ms-between-polls (* 60 1000))
+                    (kill-waiting-step)
+                    (get-step-result))]
+      (is (= :killed (:status (step-result state))))))
   (testing "that it retries until being killed if the repository cannot be reached"
     (let [state (-> (init-state)
                     (set-git-remote "some-uri-that-doesnt-exist")

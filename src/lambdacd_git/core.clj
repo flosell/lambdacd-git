@@ -56,24 +56,40 @@
 (defn- report-waiting-status [ctx]
   (async/>!! (:result-channel ctx) [:status :waiting]))
 
-(defn- wait-for-next-poll [poll-notifications ms-between-polls]
+(defn- wait-for-next-poll [poll-notifications ms-between-polls kill-channel]
   (async/alt!!
+    kill-channel nil
     poll-notifications ([_] (println "Received notification. Polling out of schedule"))
     (async/timeout ms-between-polls) :poll))
+
+(defn- kill-switch->ch [ctx]
+  (let [ch       (async/chan)
+        notifier (fn [key reference old new]
+                   (if (and (not= old new)
+                            (= true new))
+                     (async/>!! ch :killed)))]
+    (add-watch (:is-killed ctx) ::to-channel-watcher notifier)
+    ch))
+
+(defn- clean-up-kill-switch->ch [a]
+  (remove-watch a ::to-channel-watcher))
 
 (defn- wait-for-revision-changed [last-seen-revisions remote ref ctx ms-between-polls poll-notifications]
   (report-waiting-status ctx)
   (println "Last seen revisions:" (or last-seen-revisions "None") ". Waiting for new commit...")
-  (loop [last-seen-revisions last-seen-revisions]
-    (support/if-not-killed ctx
-      (let [current-revisions (current-revision-or-nil remote ref)]
-        (if (and
-              (not (nil? current-revisions))
-              (not= current-revisions last-seen-revisions))
-          (found-new-commit remote last-seen-revisions current-revisions)
-          (do
-            (wait-for-next-poll poll-notifications ms-between-polls)
-            (recur current-revisions)))))))
+  (let [kill-channel (kill-switch->ch ctx)
+        result       (loop [last-seen-revisions last-seen-revisions]
+                       (support/if-not-killed ctx
+                         (let [current-revisions (current-revision-or-nil remote ref)]
+                           (if (and
+                                 (not (nil? current-revisions))
+                                 (not= current-revisions last-seen-revisions))
+                             (found-new-commit remote last-seen-revisions current-revisions)
+                             (do
+                               (wait-for-next-poll poll-notifications ms-between-polls kill-channel)
+                               (recur current-revisions))))))]
+    (clean-up-kill-switch->ch (:is-killed ctx))
+    result))
 
 (defn- last-seen-revisions-from-history [ctx]
   (let [last-step-result (pipeline-state/most-recent-step-result-with :_git-last-seen-revisions ctx)]
@@ -114,7 +130,7 @@
           initial-revisions         (initial-revisions ctx remote ref-pred)
           remote-poll-subscription  (event-bus/subscribe ctx ::git-remote-poll-notification)
           remote-poll-notifications (only-matching-remote remote
-                                      (event-bus/only-payload remote-poll-subscription))
+                                                          (event-bus/only-payload remote-poll-subscription))
           wait-for-result           (wait-for-revision-changed initial-revisions remote ref-pred ctx ms-between-polls remote-poll-notifications)
           result                    (persist-last-seen-revisions wait-for-result initial-revisions ctx)]
       (event-bus/unsubscribe ctx ::git-remote-poll-notification remote-poll-subscription)
@@ -122,16 +138,16 @@
 
 (defn clone [ctx repo ref cwd]
   (support/capture-output ctx
-                          (let [ref (or ref "master")
-                                git (git/clone-repo repo cwd)
-                                existing-ref (git/find-ref git ref)]
-                            (if existing-ref
-                              (do
-                                (git/checkout-ref git existing-ref)
-                                {:status :success})
-                              (do
-                                (println "Failure: Could not find ref" ref)
-                                {:status :failure})))))
+    (let [ref          (or ref "master")
+          git          (git/clone-repo repo cwd)
+          existing-ref (git/find-ref git ref)]
+      (if existing-ref
+        (do
+          (git/checkout-ref git existing-ref)
+          {:status :success})
+        (do
+          (println "Failure: Could not find ref" ref)
+          {:status :failure})))))
 
 (defn iso-format [^Date date]
   (-> (SimpleDateFormat. "yyyy-MM-dd HH:mm:ss ZZZZ")
@@ -143,7 +159,7 @@
 (defn- output-commits [commits]
   (doall
     (map print-commit commits))
-  {:status :success
+  {:status  :success
    :commits commits})
 
 (defn- failure [msg]
@@ -156,7 +172,7 @@
   (support/capture-output ctx
     (let [old-revision (:old-revision args)
           new-revision (:revision args)
-          cwd (:cwd args)]
+          cwd          (:cwd args)]
       (cond
         (nil? cwd) (failure "No working directory (:cwd) defined. Did you clone the repository?")
         (no-git-repo? cwd) (failure "No .git directory found in working directory. Did you clone the repository?")
