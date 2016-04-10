@@ -5,11 +5,10 @@
             [lambdacd.steps.control-flow :refer [either with-workspace in-parallel run]]
             [lambdacd.core :as lambdacd]
             [ring.server.standalone :as ring-server]
-            [lambdacd.util :as util]
             [lambdacd.ui.ui-server :as ui]
             [lambdacd-git.core :as core]
             [lambdacd.runners :as runners]
-            [lambdacd-git.ssh-agent-support :as ssh-agent-support]))
+            [clojure.java.io :as io]))
 
 (def repo "git@github.com:flosell/testrepo")
 
@@ -35,10 +34,10 @@
        ls)))
 
 (defn -main [& args]
-  (let [home-dir (util/create-temp-dir)
+  (let [home-dir (io/file "/tmp/foo")
         config   {:home-dir home-dir}
         pipeline (lambdacd/assemble-pipeline pipeline-structure config)]
-    (ssh-agent-support/initialize-ssh-agent-support!)
+    (core/init-ssh!)
     (runners/start-one-run-after-another pipeline)
     (ring-server/serve (routes
                          (ui/ui-for pipeline)

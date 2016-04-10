@@ -8,10 +8,7 @@
             [lambdacd.util :as util]
             [lambdacd.ui.ui-server :as ui]
             [lambdacd-git.core :as core]
-            [lambdacd.runners :as runners]
-            [lambdacd-git.ssh-agent-support :as ssh-agent-support]
-            [lambdacd.steps.support :as support]
-            [lambdacd-git.git :as git]))
+            [lambdacd.runners :as runners]))
 
 (def testrepo-remote "git@github.com:flosell/testrepo")
 (def git-remote "git@github.com:flosell/lambdacd-git")
@@ -53,7 +50,7 @@
   (let [home-dir (util/create-temp-dir)
         config   {:home-dir home-dir}
         pipeline (lambdacd/assemble-pipeline pipeline-structure config)]
-    (ssh-agent-support/initialize-ssh-agent-support!)
+    (core/init-ssh!)
     (runners/start-one-run-after-another pipeline)
     (ring-server/serve (routes
                          (ui/ui-for pipeline)

@@ -22,6 +22,19 @@ Will replace the `lambdacd.steps.git` namespace in the the lambdacd-git library.
 
 You'll find a complete example here: [example/simple_pipeline.clj](https://github.com/flosell/lambdacd-git/blob/master/example/lambdacd_git/example/simple_pipeline.clj)
 
+### Initialization
+
+Some features of lambdacd-git (ssh-agent support, extended known_hosts support) require customizations to JGits singleton
+SSH session factory. Call `init-ssh!` once, e.g. in your `-main` function:
+
+```clojure
+(defn -main [& args]
+  ; ...
+  (lambdacd-git/init-ssh!)
+  ; ...
+  )
+```
+
 ### Waiting for a commit
 
 ```clojure
