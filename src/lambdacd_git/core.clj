@@ -75,7 +75,6 @@
   (remove-watch a ::to-channel-watcher))
 
 (defn- wait-for-revision-changed [last-seen-revisions remote ref ctx ms-between-polls poll-notifications]
-  (report-waiting-status ctx)
   (println "Last seen revisions:" (or last-seen-revisions "None") ". Waiting for new commit...")
   (let [kill-channel (kill-switch->ch ctx)
         result       (loop [last-seen-revisions last-seen-revisions]
@@ -86,6 +85,7 @@
                                  (not= current-revisions last-seen-revisions))
                              (found-new-commit remote last-seen-revisions current-revisions)
                              (do
+                               (report-waiting-status ctx)
                                (wait-for-next-poll poll-notifications ms-between-polls kill-channel)
                                (recur current-revisions))))))]
     (clean-up-kill-switch->ch (:is-killed ctx))

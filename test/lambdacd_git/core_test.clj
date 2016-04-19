@@ -150,7 +150,6 @@
                     (git-init)
                     (git-commit "initial commit")
                     (start-wait-for-git-step :ref "refs/heads/master")
-                    (wait-for-step-waiting)
                     (git-commit "other commit")
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
@@ -165,7 +164,6 @@
                     (git-init)
                     (git-commit "initial commit")
                     (start-wait-for-git-step :ref "refs/heads/master" :ms-between-polls (* 2 wait-for-step-finished))
-                    (wait-for-step-waiting)
                     (git-commit "other commit")
                     (trigger-notification)
                     (get-step-result))]
@@ -178,7 +176,6 @@
                     (git-init)
                     (git-commit "initial commit")
                     (start-wait-for-git-step :ref "refs/heads/master" :ms-between-polls (* 2 wait-for-step-finished))
-                    (wait-for-step-waiting)
                     (git-commit "other commit")
                     (trigger-notification :remote-to-notify "some-other-remote"))]
       (is (thrown? Exception (wait-for-step-to-complete state :timeout 500)))))
