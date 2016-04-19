@@ -64,12 +64,12 @@
     (async/timeout timeout) (throw (Exception. "timeout!"))))
 
 (defn wait-for-step-waiting [state]
-  (let [foo (:step-status-channel @state)]
+  (let [step-status-ch (:step-status-channel @state)]
     (read-channel-or-time-out
       (async/go
         (loop []
-          (let [elem (async/<! foo)]
-            (if-not (= :waiting elem)
+          (let [status (async/<! step-status-ch)]
+            (if-not (= :waiting status)
               (recur)))))))
   state)
 
