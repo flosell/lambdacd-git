@@ -1,4 +1,10 @@
-(defproject lambdacd-git "0.1.3-SNAPSHOT"
+(def lambdacd-version (or
+                        (System/getenv "LAMBDACD_VERSION")
+                        "0.6.1"))
+
+(println "Building against LambdaCD version" lambdacd-version)
+
+(defproject lambdacd-git lambdacd-version
   :description "Git support for LambdaCD"
   :url "https://github.com/flosell/lambdacd-git"
   :license {:name "Apache License, version 2.0"
@@ -9,7 +15,7 @@
                  [com.jcraft/jsch.agentproxy.usocket-jna "0.0.8"]
                  [com.jcraft/jsch.agentproxy.sshagent "0.0.8"]
                  [me.raynes/conch "0.8.0"]
-                 [lambdacd "0.6.1"]
+                 [lambdacd ~lambdacd-version]
                  [ring/ring-core "1.2.2"]]
   :repositories {"jgit-repository" "https://repo.eclipse.org/content/groups/releases/"}
   :deploy-repositories [["clojars" {:creds :gpg}]
