@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3
+
+* Improvements
+  * Allow specifying a timeout when cloning a repository
+
 ## 0.1.2
 
 * Improvements

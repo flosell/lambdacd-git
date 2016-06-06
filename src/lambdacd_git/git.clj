@@ -56,12 +56,14 @@
     (ref-or-nil git ref))
   )
 
-(defn clone-repo [repo cwd]
+(defn clone-repo [repo cwd & {:keys [timeout]
+                              :or   {timeout 20}}]
   (println "Cloning" repo "...")
   (-> (Git/cloneRepository)
       (.setURI repo)
       (.setDirectory (io/file cwd))
       (.setProgressMonitor (TextProgressMonitor. *out*))
+      (.setTimeout timeout)
       (.call)))
 
 (defn checkout-ref [^Git git ref]

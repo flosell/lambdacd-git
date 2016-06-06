@@ -136,10 +136,11 @@
       (event-bus/unsubscribe ctx ::git-remote-poll-notification remote-poll-subscription)
       result)))
 
-(defn clone [ctx repo ref cwd]
+(defn clone [ctx repo ref cwd & {:keys [timeout]
+                                 :or   {timeout 20}}]
   (support/capture-output ctx
     (let [ref          (or ref "master")
-          git          (git/clone-repo repo cwd)
+          git          (git/clone-repo repo cwd :timeout timeout)
           existing-ref (git/find-ref git ref)]
       (if existing-ref
         (do
