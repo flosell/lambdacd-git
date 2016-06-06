@@ -4,7 +4,7 @@
 
 (println "Building against LambdaCD version" lambdacd-version)
 
-(defproject lambdacd-git "0.1.3"
+(defproject lambdacd-git "0.1.4-SNAPSHOT"
   :description "Git support for LambdaCD"
   :url "https://github.com/flosell/lambdacd-git"
   :license {:name "Apache License, version 2.0"
