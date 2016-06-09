@@ -87,7 +87,7 @@
                              (do
                                (report-waiting-status ctx)
                                (wait-for-next-poll poll-notifications ms-between-polls kill-channel)
-                               (recur current-revisions))))))]
+                               (recur last-seen-revisions))))))]
     (clean-up-kill-switch->ch (:is-killed ctx))
     result))
 
