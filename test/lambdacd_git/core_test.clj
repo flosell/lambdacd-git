@@ -77,7 +77,7 @@
                                                                               ref          "refs/heads/master"}}]
   (let [wait-for-result-channel (async/go
                                   (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
-                                                                                        (fn [args ctx]
+                                                                                        (fn [_ ctx]
                                                                                           (wait-for-git ctx (get-in @state [:git :remote]) :ref ref :ms-between-polls ms-between-polls)))]
                                     (first (vals (:outputs execute-step-result)))))]
     (swap! state #(assoc % :result-channel wait-for-result-channel))
@@ -87,7 +87,7 @@
 (defn start-clone-step [state ref cwd]
   (let [wait-for-result-channel (async/go
                                   (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
-                                                                                        (fn [args ctx]
+                                                                                        (fn [_ ctx]
                                                                                           (clone ctx (get-in @state [:git :remote]) ref cwd)))]
                                     (first (vals (:outputs execute-step-result)))))]
     (swap! state #(assoc % :result-channel wait-for-result-channel))
@@ -96,7 +96,7 @@
 (defn start-list-changes-step [state cwd old-revision new-revision]
   (let [wait-for-result-channel (async/go
                                   (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
-                                                                                        (fn [args ctx]
+                                                                                        (fn [_ ctx]
                                                                                           (list-changes {:cwd             cwd
                                                                                                             :old-revision old-revision
                                                                                                             :revision     new-revision} ctx)))]
@@ -209,12 +209,12 @@
                     (git-commit "initial commit")
                     (git-checkout-b "some-branch")
 
-                    (start-wait-for-git-step :ref (fn [ref] true))
+                    (start-wait-for-git-step :ref (fn [_] true))
                     (git-commit "some commit on master")
                     (wait-for-step-to-complete)
 
                     (git-checkout "some-branch")
-                    (start-wait-for-git-step :ref (fn [ref] true))
+                    (start-wait-for-git-step :ref (fn [_] true))
                     (git-commit "some commit on branch")
 
                     (get-step-result))]
@@ -282,7 +282,20 @@
                     (git-commit "initial commit")
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
-      (is (= (commit-hash-by-msg state "initial commit") (:revision (step-result state)))))))
+      (is (= (commit-hash-by-msg state "initial commit") (:revision (step-result state))))))
+  (testing "that it does not overwrite the latest commit with nil if polling for a new commit fails"
+    (let [was-called? (atom false)
+          return-nil-on-first-call-then-some-commit (fn [_ _] (if @was-called? "some commit hash" (do (reset! was-called? true) nil)))]
+      (with-redefs [core/initial-revisions (constantly "some commit hash")
+                    core/current-revision-or-nil return-nil-on-first-call-then-some-commit]
+        (let [wait-at-least-two-polls (fn [state] (do (Thread/sleep 3) state))
+              state (-> (init-state)
+                        (start-wait-for-git-step :ms-between-polls 1)
+                        (wait-at-least-two-polls)
+                        (kill-waiting-step)
+                        (get-step-result))]
+          (is (str-containing "some commit hash" (:out (step-result state)))))))))
+
 (deftest clone-test
   (testing "that we can clone a specific commit"
     (let [state (init-state)
