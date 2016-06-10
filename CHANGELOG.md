@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4
+
+* Bug Fixes:
+  * Fixed bug in error handling in `wait-for-git` (#15)
+    (Thanks to @ImmoStanke)
+
 ## 0.1.3
 
 * Improvements
