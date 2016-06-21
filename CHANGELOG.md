@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.5
+
+* Improvements
+  * Allow setting of a specific identity file (#12).
+    Use case is to select the desired account from multiple GitHub accounts that have differing private repo membership.
+    (Thanks to @markdingram)
+
 ## 0.1.4
 
 * Bug Fixes:

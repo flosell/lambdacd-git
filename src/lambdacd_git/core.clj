@@ -14,11 +14,11 @@
             [lambdacd-git.ssh-agent-support :as ssh-agent-support]
             [me.raynes.fs :as fs])
   (:import (java.util.regex Pattern)
-           (java.util Date)
+           (java.util Date Vector Collection)
            (java.text SimpleDateFormat)
            (org.eclipse.jgit.transport SshSessionFactory)
            (java.io SequenceInputStream FileInputStream File)
-           (com.jcraft.jsch JSch)
+           (com.jcraft.jsch JSch Identity IdentityRepository)
            (clojure.lang SeqEnumeration)))
 
 (defn- find-changed-revision [old-revisions new-revisions]
@@ -215,10 +215,23 @@
     (doto jsch
       (.setKnownHosts (SequenceInputStream. (known-hosts-streams known-hosts-files))))))
 
-(defn init-ssh! [& {:keys [use-agent known-hosts-files]
+(defn- set-identity-file
+  "Explicitly set the identity file that will be used for authentication.
+
+   All identities will normally be tried, this setting can allow ensuring a specific GitHub account is used
+   with permissions to a private repo."
+  [identity-file]
+  (fn [^JSch jsch]
+    (let [current (.getIdentities (.getIdentityRepository jsch))]
+      (doto jsch
+        (.setIdentityRepository
+          (proxy [IdentityRepository] []
+            (getIdentities [] (Vector. ^Collection (filter #(= (fs/expand-home identity-file) (.getName ^Identity %)) current)))))))))
+
+(defn init-ssh! [& {:keys [use-agent known-hosts-files identity-file]
                     :or   {use-agent         true
                            known-hosts-files ["~/.ssh/known_hosts" "/etc/ssh/ssh_known_hosts"]}}]
-  (let [customizer-fns (if use-agent
-                         [ssh-agent-support/ssh-agent-customizer (set-known-hosts known-hosts-files)]
-                         [(set-known-hosts known-hosts-files)])]
+  (let [customizer-fns (filter some? [(when use-agent ssh-agent-support/ssh-agent-customizer)
+                                      (when known-hosts-files (set-known-hosts known-hosts-files))
+                                      (when identity-file (set-identity-file identity-file))])]
     (SshSessionFactory/setInstance (ssh-agent-support/session-factory customizer-fns))))
