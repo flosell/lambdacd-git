@@ -106,10 +106,23 @@
                  (.call))]
     (map process-commit (reverse refs))))
 
+(defn- get-commit-reference [^Git git hash]
+  (-> git
+      (.getRepository)
+      (RevWalk.)
+      (.parseCommit (resolve-object git hash))))
+
 (defn get-single-commit [workspace hash]
   (let [git (git-open workspace)]
     (-> git
-        (.getRepository)
-        (RevWalk.)
-        (.parseCommit (resolve-object git hash))
+        (get-commit-reference hash)
         (process-commit))))
+
+(defn tag-revision [workspace hash tag]
+  (let [git (git-open workspace)
+        commit (get-commit-reference git hash)]
+    (-> git
+        (.tag)
+        (.setObjectId commit)
+        (.setName tag)
+        (.call))))

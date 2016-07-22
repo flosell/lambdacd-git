@@ -1,7 +1,7 @@
 (ns lambdacd-git.git-test
   (:require [clojure.test :refer :all]
             [lambdacd-git.git-utils :refer [git-init git-add-file git-commit git-checkout-b git-checkout commit-by-msg
-                                            git-tag git-user-name git-user-email commit-timestamp-date]]
+                                            git-tag git-tag-list git-user-name git-user-email commit-timestamp-date]]
             [lambdacd-git.git :refer :all]
             [lambdacd.util :as util]
             [lambdacd-git.test-utils :refer [str-containing]]
@@ -142,3 +142,24 @@
               :author    (expected-author git-handle)
               :timestamp (expected-timestamp git-handle "some commit")}
              (get-single-commit (:dir git-handle) "HEAD"))))))
+
+(deftest tag-revision-test
+  (testing "that we can tag the head of the master branch"
+    (let [git-handle (-> (git-init)
+                         (git-commit "some commit"))
+          workspace (:dir git-handle)]
+      (tag-revision workspace "HEAD" "some-tag")
+      (is (= "some-tag\n"
+             (git-tag-list git-handle "HEAD")))))
+  (testing "that we can tag some commit on another branch"
+    (let [git-handle (-> (git-init)
+                         (git-commit "some commit on master")
+                         (git-checkout-b "some-branch")
+                         (git-commit "some commit on branch")
+                         (git-commit "some other commit on branch")
+                         (git-checkout "master"))
+          commit (commit-by-msg git-handle "some commit on branch")
+          workspace (:dir git-handle)]
+      (tag-revision workspace commit "some-tag")
+      (is (= "some-tag\n"
+             (git-tag-list git-handle commit))))))

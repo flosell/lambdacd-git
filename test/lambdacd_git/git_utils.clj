@@ -55,6 +55,9 @@
   (git git-handle "tag" tag)
   git-handle)
 
+(defn git-tag-list [git-handle commit]
+  (git git-handle "tag" "-l" "--points-at" commit))
+
 (defn git-user-name [git-handle]
   (s/trim (git git-handle "config" "--get" "user.name")))
 
