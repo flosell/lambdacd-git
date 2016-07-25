@@ -126,3 +126,12 @@
         (.setObjectId commit)
         (.setName tag)
         (.call))))
+
+(defn push [workspace remote]
+  (let [git (git-open workspace)]
+    (-> git
+        (.push)
+        (.setPushAll)
+        (.setPushTags)
+        (.setRemote remote)
+        (.call))))

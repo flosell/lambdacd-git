@@ -1,7 +1,8 @@
 (ns lambdacd-git.git-test
   (:require [clojure.test :refer :all]
-            [lambdacd-git.git-utils :refer [git-init git-add-file git-commit git-checkout-b git-checkout commit-by-msg
-                                            git-tag git-tag-list git-user-name git-user-email commit-timestamp-date]]
+            [lambdacd-git.git-utils :refer [git-init git-add-file git-commit git-checkout-b
+                                            git-checkout commit-by-msg git-tag git-tag-list git-user-name
+                                            git-user-email commit-timestamp-date get-last-commit-msg]]
             [lambdacd-git.git :refer :all]
             [lambdacd.util :as util]
             [lambdacd-git.test-utils :refer [str-containing]]
@@ -163,3 +164,24 @@
       (tag-revision workspace commit "some-tag")
       (is (= "some-tag\n"
              (git-tag-list git-handle commit))))))
+
+(deftest push-test
+  (testing "that it pushes a commit"
+    (let [remote-git (git-init)
+          git-handle (-> (git-init)
+                         (git-add-file "some-file" "some content")
+                         (git-commit "some commit on master"))
+          workspace (:dir git-handle)
+          remote (:remote remote-git)]
+      (push workspace remote)
+      (is (= "some commit on master" (clojure.string/trim (get-last-commit-msg remote-git))))))
+  (testing "that it pushes a tag"
+    (let [remote-git (git-init)
+          git-handle (-> (git-init)
+                         (git-add-file "some-file" "some content")
+                         (git-commit "some commit on master")
+                         (git-tag "some-tag"))
+          workspace (:dir git-handle)
+          remote (:remote remote-git)]
+      (push workspace remote)
+      (is (= "some-tag\n" (git-tag-list remote-git "HEAD"))))))

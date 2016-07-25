@@ -79,3 +79,6 @@
         (Integer/parseInt)
         (* 1000)
         (Date.))))
+
+(defn get-last-commit-msg [git-handle]
+  (git git-handle "log" "--pretty=%B" "-1"))
