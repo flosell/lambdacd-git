@@ -107,14 +107,14 @@
 
 (deftest commits-between-test
   (testing "that it returns the commits between two hashes excluding the first and including the last"
-    (let [git-handle    (-> (git-init)
-                            (git-commit "first commit")
-                            (git-commit "second commit")
-                            (git-commit "third commit"))
-          first-commit  (commit-by-msg git-handle "first commit")
+    (let [git-handle (-> (git-init)
+                         (git-commit "first commit")
+                         (git-commit "second commit")
+                         (git-commit "third commit"))
+          first-commit (commit-by-msg git-handle "first commit")
           second-commit (commit-by-msg git-handle "second commit")
-          third-commit  (commit-by-msg git-handle "third commit")
-          workspace     (:dir git-handle)]
+          third-commit (commit-by-msg git-handle "third commit")
+          workspace (:dir git-handle)]
       (is (= [{:hash      second-commit
                :msg       "second commit"
                :author    (expected-author git-handle)

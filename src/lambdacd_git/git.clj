@@ -74,25 +74,25 @@
       (.call)))
 
 (defn- process-commit [^RevCommit ref]
-  (let [hash   (-> ref
-                   (.getId)
-                   (.name))
-        msg    (-> ref
-                   (.getShortMessage))
-        name   (-> ref
-                   (.getAuthorIdent)
-                   (.getName))
-        email  (-> ref
-                   (.getAuthorIdent)
-                   (.getEmailAddress))
-        time   (-> ref
-                   (.getCommitTime)
-                   (* 1000)
-                   (Date.))
+  (let [hash (-> ref
+                 (.getId)
+                 (.name))
+        msg (-> ref
+                (.getShortMessage))
+        name (-> ref
+                 (.getAuthorIdent)
+                 (.getName))
+        email (-> ref
+                  (.getAuthorIdent)
+                  (.getEmailAddress))
+        time (-> ref
+                 (.getCommitTime)
+                 (* 1000)
+                 (Date.))
         author (format "%s <%s>" name email)]
-    {:hash   hash
-     :msg    msg
-     :author author
+    {:hash      hash
+     :msg       msg
+     :author    author
      :timestamp time}))
 
 (defn- ^Git git-open [workspace]
