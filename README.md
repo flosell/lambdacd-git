@@ -135,6 +135,23 @@ You can have clone steps that clone into different subdirectories:
 If you want to use this in combination with `wait-for-git`, you need to detect which commit to use. For details, see
 [example/multi_repo_pipeline.clj](https://github.com/flosell/lambdacd-git/blob/master/example/lambdacd_git/example/multi_repo_pipeline.clj)
 
+### Tagging versions
+
+You can tag any revision:
+
+```clojure
+(defn deploy-to-live [args ctx]
+  ;do deploy
+  (let [cwd (:cwd args)]
+    (lambdacd-git/tag-version ctx cwd repo "HEAD" (str "live-" version))))
+
+(def pipeline-structure
+  `(; ...
+    (with-workspace
+      ;...
+      deploy-to-live
+      do-something)))
+```
 
 ## Development
 
