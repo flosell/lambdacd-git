@@ -64,7 +64,7 @@
 
 (defn- kill-switch->ch [ctx]
   (let [ch       (async/chan)
-        notifier (fn [key reference old new]
+        notifier (fn [_ _ old new]
                    (if (and (not= old new)
                             (= true new))
                      (async/>!! ch :killed)))]

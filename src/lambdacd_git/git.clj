@@ -1,9 +1,7 @@
 (ns lambdacd-git.git
-  (:require [clojure.java.io :as io]
-            [lambdacd.steps.support :as support])
+  (:require [clojure.java.io :as io])
   (:import (org.eclipse.jgit.api Git)
-           (org.eclipse.jgit.lib Ref TextProgressMonitor AnyObjectId)
-           (java.io PrintWriter)
+           (org.eclipse.jgit.lib Ref TextProgressMonitor)
            (org.eclipse.jgit.revwalk RevCommit RevWalk)
            (java.util Date)))
 

@@ -73,36 +73,34 @@
               (recur)))))))
   state)
 
-(defn start-wait-for-git-step [state & {:keys [ref ms-between-polls] :or {ms-between-polls 100
-                                                                              ref          "refs/heads/master"}}]
+(defn execute-pipeline-step [state step]
   (let [wait-for-result-channel (async/go
                                   (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
-                                                                                        (fn [_ ctx]
-                                                                                          (wait-for-git ctx (get-in @state [:git :remote]) :ref ref :ms-between-polls ms-between-polls)))]
+                                                              step)]
+                                    (first (vals (:outputs execute-step-result)))))]
+    (swap! state #(assoc % :result-channel wait-for-result-channel))
+    state))
+
+(defn start-wait-for-git-step [state & {:keys [ref ms-between-polls] :or {ms-between-polls 100
+                                                                          ref              "refs/heads/master"}}]
+  (let [wait-for-result-channel (async/go
+                                  (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
+                                                              (fn [_ ctx]
+                                                                (wait-for-git ctx (get-in @state [:git :remote]) :ref ref :ms-between-polls ms-between-polls)))]
                                     (first (vals (:outputs execute-step-result)))))]
     (swap! state #(assoc % :result-channel wait-for-result-channel))
     (wait-for-step-waiting state)
     state))
 
 (defn start-clone-step [state ref cwd]
-  (let [wait-for-result-channel (async/go
-                                  (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
-                                                                                        (fn [_ ctx]
-                                                                                          (clone ctx (get-in @state [:git :remote]) ref cwd)))]
-                                    (first (vals (:outputs execute-step-result)))))]
-    (swap! state #(assoc % :result-channel wait-for-result-channel))
-    state))
+  (execute-pipeline-step state (fn [_ ctx]
+                                 (clone ctx (get-in @state [:git :remote]) ref cwd))))
 
 (defn start-list-changes-step [state cwd old-revision new-revision]
-  (let [wait-for-result-channel (async/go
-                                  (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
-                                                                                        (fn [_ ctx]
-                                                                                          (list-changes {:cwd             cwd
-                                                                                                            :old-revision old-revision
-                                                                                                            :revision     new-revision} ctx)))]
-                                    (first (vals (:outputs execute-step-result)))))]
-    (swap! state #(assoc % :result-channel wait-for-result-channel))
-    state))
+  (execute-pipeline-step state (fn [_ ctx]
+                                 (list-changes {:cwd          cwd
+                                                :old-revision old-revision
+                                                :revision     new-revision} ctx))))
 
 (defn kill-waiting-step [state]
   (reset! (:is-killed @state) true)
