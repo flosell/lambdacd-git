@@ -73,36 +73,38 @@
               (recur)))))))
   state)
 
-(defn start-wait-for-git-step [state & {:keys [ref ms-between-polls] :or {ms-between-polls 100
-                                                                              ref          "refs/heads/master"}}]
+(defn execute-pipeline-step [state step]
   (let [wait-for-result-channel (async/go
                                   (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
-                                                                                        (fn [_ ctx]
-                                                                                          (wait-for-git ctx (get-in @state [:git :remote]) :ref ref :ms-between-polls ms-between-polls)))]
+                                                              step)]
+                                    (first (vals (:outputs execute-step-result)))))]
+    (swap! state #(assoc % :result-channel wait-for-result-channel))
+    state))
+
+(defn start-wait-for-git-step [state & {:keys [ref ms-between-polls] :or {ms-between-polls 100
+                                                                          ref              "refs/heads/master"}}]
+  (let [wait-for-result-channel (async/go
+                                  (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
+                                                              (fn [_ ctx]
+                                                                (wait-for-git ctx (get-in @state [:git :remote]) :ref ref :ms-between-polls ms-between-polls)))]
                                     (first (vals (:outputs execute-step-result)))))]
     (swap! state #(assoc % :result-channel wait-for-result-channel))
     (wait-for-step-waiting state)
     state))
 
 (defn start-clone-step [state ref cwd]
-  (let [wait-for-result-channel (async/go
-                                  (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
-                                                                                        (fn [_ ctx]
-                                                                                          (clone ctx (get-in @state [:git :remote]) ref cwd)))]
-                                    (first (vals (:outputs execute-step-result)))))]
-    (swap! state #(assoc % :result-channel wait-for-result-channel))
-    state))
+  (execute-pipeline-step state (fn [_ ctx]
+                                 (clone ctx (get-in @state [:git :remote]) ref cwd))))
 
 (defn start-list-changes-step [state cwd old-revision new-revision]
-  (let [wait-for-result-channel (async/go
-                                  (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
-                                                                                        (fn [_ ctx]
-                                                                                          (list-changes {:cwd             cwd
-                                                                                                            :old-revision old-revision
-                                                                                                            :revision     new-revision} ctx)))]
-                                    (first (vals (:outputs execute-step-result)))))]
-    (swap! state #(assoc % :result-channel wait-for-result-channel))
-    state))
+  (execute-pipeline-step state (fn [_ ctx]
+                                 (list-changes {:cwd          cwd
+                                                :old-revision old-revision
+                                                :revision     new-revision} ctx))))
+
+(defn start-tag-version-step [state cwd remote-repo revision tag]
+  (execute-pipeline-step state (fn [_ ctx]
+                                 (tag-version ctx cwd remote-repo revision tag))))
 
 (defn kill-waiting-step [state]
   (reset! (:is-killed @state) true)
@@ -411,3 +413,75 @@
         (is (str-containing "Current HEAD" (:out (step-result state))))
         (is (str-containing (commit-hash-by-msg state "some commit") (:out (step-result state))))
         (is (= :success (:status (step-result state))))))))
+
+(deftest tag-version-test
+  (testing "normal behaviour"
+    (testing "that it tags and pushes"
+      (let [state       (init-state)
+            remote-git  (git-utils/git-init)
+            remote-repo (:remote remote-git)]
+        (-> state
+          (git-init)
+          (git-add-file "some-file" "some content")
+          (git-commit "some commit")
+          (start-tag-version-step (get-in @state [:git :dir]) remote-repo (commit-hash-by-msg state "some commit") "some-tag")
+          (get-step-result))
+        (let [commit (commit-hash-by-msg state "some commit")]
+          (is (= "some-tag\n" (git-utils/git-tag-list (:git @state) commit)))
+          (is (= "some-tag\n" (git-utils/git-tag-list remote-git commit)))
+          (is (= :success (:status (step-result state))))))))
+  (testing "error handling"
+    (testing "that an error is reported if no cwd is set"
+      (let [state       (init-state)]
+        (-> state
+          (start-tag-version-step nil "some-uri" "some-commit" "some-tag")
+          (get-step-result))
+        (println (:out (step-result state)))
+        (is (str-containing "No working directory" (:out (step-result state))))
+        (is (= :failure (:status (step-result state))))))
+    (testing "that an error is reported if no git repo is found in cwd"
+      (let [state       (init-state)
+            workspace (util/create-temp-dir)]
+        (-> state
+          (start-tag-version-step workspace "some-uri" "some-commit" "some-tag")
+          (get-step-result))
+        (println (:out (step-result state)))
+        (is (str-containing "No .git directory" (:out (step-result state))))
+        (is (= :failure (:status (step-result state))))))
+    (testing "that an error is reported if no remote repository is given"
+      (let [state       (init-state)]
+        (-> state
+          (git-init)
+          (git-add-file "some-file" "some content")
+          (git-commit "some commit")
+          (start-tag-version-step (get-in @state [:git :dir]) "" "HEAD" "tag-name")
+          (get-step-result))
+        (is (str-containing "No remote repository" (:out (step-result state))))
+        (is (= "" (git-utils/git-tag-list (:git @state) "HEAD")))
+        (is (= :failure (:status (step-result state))))))
+    (testing "that HEAD is tagged if no revision was given"
+      (let [state       (init-state)
+            remote-git  (git-utils/git-init)
+            remote-repo (:remote remote-git)]
+        (-> state
+          (git-init)
+          (git-add-file "some-file" "some content")
+          (git-commit "some commit")
+          (start-tag-version-step (get-in @state [:git :dir]) remote-repo nil "some-tag")
+          (get-step-result))
+        (is (= "some-tag\n" (git-utils/git-tag-list (:git @state) "HEAD")))
+        (is (= "some-tag\n" (git-utils/git-tag-list remote-git "HEAD")))
+        (is (= :success (:status (step-result state))))))
+    (testing "that an error is reported if no tag name is set"
+      (let [state       (init-state)
+            remote-git  (git-utils/git-init)
+            remote-repo (:remote remote-git)]
+        (-> state
+          (git-init)
+          (git-add-file "some-file" "some content")
+          (git-commit "some commit")
+          (start-tag-version-step (get-in @state [:git :dir]) remote-repo "HEAD" "")
+          (get-step-result))
+        (is (str-containing "No tag name" (:out (step-result state))))
+        (is (= "" (git-utils/git-tag-list (:git @state) "HEAD")))
+        (is (= :failure (:status (step-result state))))))))

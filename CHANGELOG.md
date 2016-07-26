@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.6
+
+* Improvements
+  * Add support for git tag and push.
+    Use case is to tag a deployed version to a commit.
+    Push pushes all new tags and commits to a given repository.
+    (Thanks to @rohte)
+
 ## 0.1.5
 
 * Improvements

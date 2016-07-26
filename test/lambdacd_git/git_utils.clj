@@ -21,10 +21,10 @@
 
 (defn git-init []
   (let [dir (create-temp-dir)
-        git-handle {:dir dir
-                    :remote (str "file://" dir)
-                    :commits []
-                    :commits-by-msg {}
+        git-handle {:dir                 dir
+                    :remote              (str "file://" dir)
+                    :commits             []
+                    :commits-by-msg      {}
                     :staged-file-content nil}]
     (git git-handle "init")
     git-handle))
@@ -35,8 +35,8 @@
   (assoc git-handle :staged-file-content file-content))
 
 (defn git-commit [git-handle msg]
-  (git git-handle   "commit" "-m" msg "--allow-empty")
-  (let [new-hash    (s/trim (git git-handle "rev-parse" "HEAD"))
+  (git git-handle "commit" "-m" msg "--allow-empty")
+  (let [new-hash (s/trim (git git-handle "rev-parse" "HEAD"))
         commit-desc {:hash new-hash :file-content (:staged-file-content git-handle)}]
     (-> git-handle
         (update :commits #(conj % commit-desc))
@@ -55,6 +55,9 @@
   (git git-handle "tag" tag)
   git-handle)
 
+(defn git-tag-list [git-handle commit]
+  (git git-handle "tag" "-l" "--points-at" commit))
+
 (defn git-user-name [git-handle]
   (s/trim (git git-handle "config" "--get" "user.name")))
 
@@ -70,9 +73,12 @@
   (git git-handle "show" "--pretty=format:%cd" "--date=iso" hash))
 
 (defn commit-timestamp-date [git-handle hash]
-  (let [timestamp (git git-handle "show" "--pretty=format:%ct"  hash)]
+  (let [timestamp (git git-handle "show" "--pretty=format:%ct" hash)]
     (-> timestamp
         (s/trim)
         (Integer/parseInt)
         (* 1000)
         (Date.))))
+
+(defn get-last-commit-msg [git-handle]
+  (git git-handle "log" "--pretty=%B" "-1"))

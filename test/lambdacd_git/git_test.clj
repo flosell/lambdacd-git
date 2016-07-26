@@ -1,7 +1,8 @@
 (ns lambdacd-git.git-test
   (:require [clojure.test :refer :all]
-            [lambdacd-git.git-utils :refer [git-init git-add-file git-commit git-checkout-b git-checkout commit-by-msg
-                                            git-tag git-user-name git-user-email commit-timestamp-date]]
+            [lambdacd-git.git-utils :refer [git-init git-add-file git-commit git-checkout-b
+                                            git-checkout commit-by-msg git-tag git-tag-list git-user-name
+                                            git-user-email commit-timestamp-date get-last-commit-msg]]
             [lambdacd-git.git :refer :all]
             [lambdacd.util :as util]
             [lambdacd-git.test-utils :refer [str-containing]]
@@ -107,14 +108,14 @@
 
 (deftest commits-between-test
   (testing "that it returns the commits between two hashes excluding the first and including the last"
-    (let [git-handle    (-> (git-init)
-                            (git-commit "first commit")
-                            (git-commit "second commit")
-                            (git-commit "third commit"))
-          first-commit  (commit-by-msg git-handle "first commit")
+    (let [git-handle (-> (git-init)
+                         (git-commit "first commit")
+                         (git-commit "second commit")
+                         (git-commit "third commit"))
+          first-commit (commit-by-msg git-handle "first commit")
           second-commit (commit-by-msg git-handle "second commit")
-          third-commit  (commit-by-msg git-handle "third commit")
-          workspace     (:dir git-handle)]
+          third-commit (commit-by-msg git-handle "third commit")
+          workspace (:dir git-handle)]
       (is (= [{:hash      second-commit
                :msg       "second commit"
                :author    (expected-author git-handle)
@@ -142,3 +143,45 @@
               :author    (expected-author git-handle)
               :timestamp (expected-timestamp git-handle "some commit")}
              (get-single-commit (:dir git-handle) "HEAD"))))))
+
+(deftest tag-revision-test
+  (testing "that we can tag the head of the master branch"
+    (let [git-handle (-> (git-init)
+                         (git-commit "some commit"))
+          workspace (:dir git-handle)]
+      (tag-revision workspace "HEAD" "some-tag")
+      (is (= "some-tag\n"
+             (git-tag-list git-handle "HEAD")))))
+  (testing "that we can tag some commit on another branch"
+    (let [git-handle (-> (git-init)
+                         (git-commit "some commit on master")
+                         (git-checkout-b "some-branch")
+                         (git-commit "some commit on branch")
+                         (git-commit "some other commit on branch")
+                         (git-checkout "master"))
+          commit (commit-by-msg git-handle "some commit on branch")
+          workspace (:dir git-handle)]
+      (tag-revision workspace commit "some-tag")
+      (is (= "some-tag\n"
+             (git-tag-list git-handle commit))))))
+
+(deftest push-test
+  (testing "that it pushes a commit"
+    (let [remote-git (git-init)
+          git-handle (-> (git-init)
+                         (git-add-file "some-file" "some content")
+                         (git-commit "some commit on master"))
+          workspace (:dir git-handle)
+          remote (:remote remote-git)]
+      (push workspace remote)
+      (is (= "some commit on master" (clojure.string/trim (get-last-commit-msg remote-git))))))
+  (testing "that it pushes a tag"
+    (let [remote-git (git-init)
+          git-handle (-> (git-init)
+                         (git-add-file "some-file" "some content")
+                         (git-commit "some commit on master")
+                         (git-tag "some-tag"))
+          workspace (:dir git-handle)
+          remote (:remote remote-git)]
+      (push workspace remote)
+      (is (= "some-tag\n" (git-tag-list remote-git "HEAD"))))))

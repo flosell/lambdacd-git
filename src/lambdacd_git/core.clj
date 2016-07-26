@@ -64,7 +64,7 @@
 
 (defn- kill-switch->ch [ctx]
   (let [ch       (async/chan)
-        notifier (fn [key reference old new]
+        notifier (fn [_ _ old new]
                    (if (and (not= old new)
                             (= true new))
                      (async/>!! ch :killed)))]
@@ -235,3 +235,15 @@
                                       (when known-hosts-files (set-known-hosts known-hosts-files))
                                       (when identity-file (set-identity-file identity-file))])]
     (SshSessionFactory/setInstance (ssh-agent-support/session-factory customizer-fns))))
+
+(defn tag-version [ctx cwd repo revision tag]
+  (support/capture-output ctx
+    (let [rev (or revision "HEAD")]
+      (cond
+        (nil? cwd) (failure "No working directory (:cwd) defined. Did you clone the repository?")
+        (no-git-repo? cwd) (failure "No .git directory found in working directory. Did you clone the repository?")
+        (or (nil? tag) (empty? tag)) (failure "No tag name was given.")
+        (or (nil? repo) (empty? repo)) (failure "No remote repository was given.")
+        :else (do (git/tag-revision cwd rev tag)
+                  (git/push cwd repo)
+                  {:status :success})))))
