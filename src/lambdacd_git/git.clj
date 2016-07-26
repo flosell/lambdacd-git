@@ -117,6 +117,7 @@
         (process-commit))))
 
 (defn tag-revision [workspace hash tag]
+  (println "Tagging " hash " with " tag "...")
   (let [git (git-open workspace)
         commit (get-commit-reference git hash)]
     (-> git
@@ -126,6 +127,7 @@
         (.call))))
 
 (defn push [workspace remote]
+  (println "Pushing changes...")
   (let [git (git-open workspace)]
     (-> git
         (.push)
