@@ -67,7 +67,7 @@
         notifier (fn [_ _ old new]
                    (if (and (not= old new)
                             (= true new))
-                     (async/>!! ch :killed)))]
+                     (async/put! ch :killed)))]
     (add-watch (:is-killed ctx) ::to-channel-watcher notifier)
     ch))
 
