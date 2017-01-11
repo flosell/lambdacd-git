@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0
+
+* Compatibility
+  * Adds compatibility with LambdaCD versions 0.12.0 and greater. Incompatible with versions earlier than 0.9.1. (#19) 
+
 ## 0.1.6
 
 * Improvements

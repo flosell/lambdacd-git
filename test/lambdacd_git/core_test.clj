@@ -3,7 +3,7 @@
             [lambdacd-git.core :refer :all :as core]
             [lambdacd-git.git-utils :as git-utils]
             [clojure.core.async :as async]
-            [lambdacd.internal.pipeline-state :as pipeline-state]
+            [lambdacd.state.internal.pipeline-state-updater :as pipeline-state]
             [lambdacd-git.test-utils :refer [str-containing some-ctx-with]]
             [lambdacd.core :as lambdacd-core]
             [lambdacd.util :as util]
@@ -22,7 +22,7 @@
   (let [is-killed (atom false)
         ctx (some-ctx-with :is-killed is-killed)
         step-status-channel (status-updates-channel ctx)]
-    (pipeline-state/start-pipeline-state-updater (:pipeline-state-component ctx) ctx)
+    (pipeline-state/start-pipeline-state-updater ctx)
     (atom {:ctx ctx
            :is-killed is-killed
            :step-status-channel step-status-channel})))

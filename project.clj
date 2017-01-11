@@ -1,6 +1,6 @@
 (def lambdacd-version (or
                         (System/getenv "LAMBDACD_VERSION")
-                        "0.6.1"))
+                        "0.12.1"))
 
 (println "Building against LambdaCD version" lambdacd-version)
 

@@ -189,7 +189,7 @@
     (if remote
       (do
         (log/debug "Notifying git about update on remote" remote)
-        (event-bus/publish ctx ::git-remote-poll-notification {:remote remote})
+        (event-bus/publish!! ctx ::git-remote-poll-notification {:remote remote})
         (-> (ring-response/response "")
             (ring-response/status 204)))
       (do
