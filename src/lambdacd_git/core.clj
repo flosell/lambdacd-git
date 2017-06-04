@@ -245,5 +245,5 @@
         (or (nil? tag) (empty? tag)) (failure "No tag name was given.")
         (or (nil? repo) (empty? repo)) (failure "No remote repository was given.")
         :else (do (git/tag-revision cwd rev tag)
-                  (git/push cwd repo)
+                  (git/push cwd repo :credentials-provider (get-in ctx [:config :git :credentials-provider]))
                   {:status :success})))))

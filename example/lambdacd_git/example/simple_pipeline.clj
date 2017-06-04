@@ -21,6 +21,12 @@
 (defn ls [args ctx]
   (shell/bash ctx (:cwd args) "ls"))
 
+(defn create-new-tag [args ctx]
+  (if (:repo-pushable (:config ctx))
+    (core/tag-version ctx (:cwd args) (:repo-uri (:config ctx)) "HEAD" (str (System/currentTimeMillis)))
+    {:status :success
+     :out    "SKIPPING, REPO IS NOT PUSHABLE"}))
+
 (def pipeline-structure
   `((either
       wait-for-manual-trigger
@@ -28,13 +34,14 @@
      (with-workspace
        clone
        core/list-changes
-
-       ls)))
+       ls
+       create-new-tag)))
 
 (defn -main [& args]
   (let [home-dir (io/file "/tmp/foo")
-        config   {:home-dir home-dir
-                  :repo-uri "git@github.com:flosell/testrepo"}
+        config   {:home-dir      home-dir
+                  :repo-uri      "git@github.com:flosell/testrepo"
+                  :repo-pushable false}
         pipeline (lambdacd/assemble-pipeline pipeline-structure config)]
     (core/init-ssh!)
     (runners/start-one-run-after-another pipeline)

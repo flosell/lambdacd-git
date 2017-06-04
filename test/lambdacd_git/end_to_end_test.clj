@@ -30,10 +30,12 @@
 (deftest end-to-end-test
   (testing "a complete pipeline"
     (core/init-ssh!)
-    (doseq [repo-config [{:repo-uri "https://github.com/flosell/testrepo.git"}
-                         {:repo-uri "https://gitlab.com/flosell-test/testrepo.git"
-                          :git      {:credentials-provider (UsernamePasswordCredentialsProvider. (System/getenv "LAMBDACD_GIT_TESTREPO_USERNAME")
-                                                                                                 (System/getenv "LAMBDACD_GIT_TESTREPO_PASSWORD"))}}]]
+    (doseq [repo-config [{:repo-uri      "https://github.com/flosell/testrepo.git"
+                          :repo-pushable false}
+                         {:repo-uri      "https://gitlab.com/flosell-test/testrepo.git"
+                          :repo-pushable true
+                          :git           {:credentials-provider (UsernamePasswordCredentialsProvider. (System/getenv "LAMBDACD_GIT_TESTREPO_USERNAME")
+                                                                                                      (System/getenv "LAMBDACD_GIT_TESTREPO_PASSWORD"))}}]]
       (testing (:repo-uri repo-config)
         (let [config                 (assoc repo-config :home-dir (lambdacd-util/create-temp-dir))
               pipeline               (lambdacd/assemble-pipeline simple-pipeline/pipeline-structure config)

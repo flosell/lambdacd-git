@@ -1,6 +1,6 @@
 (ns lambdacd-git.git
   (:require [clojure.java.io :as io])
-  (:import (org.eclipse.jgit.api Git)
+  (:import (org.eclipse.jgit.api Git TransportCommand)
            (org.eclipse.jgit.lib Ref TextProgressMonitor)
            (org.eclipse.jgit.revwalk RevCommit RevWalk)
            (java.util Date)
@@ -52,19 +52,22 @@
 (defn find-ref [git ref]
   (or
     (ref-or-nil git (str "origin/" ref))
-    (ref-or-nil git ref))
-  )
+    (ref-or-nil git ref)))
 
-(defn clone-repo [repo cwd & {:keys [timeout credentials-provider]
-                              :or   {timeout              20
-                                     credentials-provider (CredentialsProvider/getDefault)}}]
+(defn- set-transport-opts [^TransportCommand transport-command {:keys [timeout ^CredentialsProvider credentials-provider]
+                                                                :or   {timeout              20
+                                                                       credentials-provider (CredentialsProvider/getDefault)}}]
+  (-> transport-command
+      (.setTimeout timeout)
+      (.setCredentialsProvider credentials-provider)))
+
+(defn clone-repo [repo cwd & transport-opts]
   (println "Cloning" repo "...")
   (-> (Git/cloneRepository)
+      (set-transport-opts transport-opts)
       (.setURI repo)
       (.setDirectory (io/file cwd))
       (.setProgressMonitor (TextProgressMonitor. *out*))
-      (.setTimeout timeout)
-      (.setCredentialsProvider credentials-provider)
       (.call)))
 
 (defn checkout-ref [^Git git ref]
@@ -129,12 +132,14 @@
         (.setName tag)
         (.call))))
 
-(defn push [workspace remote]
+(defn push [workspace remote & transport-opts]
   (println "Pushing changes...")
   (let [git (git-open workspace)]
     (-> git
         (.push)
+        (set-transport-opts transport-opts)
         (.setPushAll)
         (.setPushTags)
         (.setRemote remote)
+        (.setProgressMonitor (TextProgressMonitor. *out*))
         (.call))))
