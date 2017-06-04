@@ -29,7 +29,7 @@
 (deftest end-to-end-test
   (testing "a complete pipeline"
     (core/init-ssh!)
-    (doseq [repo-uri ["https://github.com/flosell/lambdacd-git.git"]]
+    (doseq [repo-uri ["https://github.com/flosell/testrepo.git"]]
       (testing (str "repo-uri" repo-uri)
         (let [config                 {:home-dir (lambdacd-util/create-temp-dir)
                                       :repo-uri repo-uri}
