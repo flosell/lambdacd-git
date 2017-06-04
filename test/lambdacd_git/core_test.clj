@@ -58,7 +58,7 @@
 (def wait-for-step-finished 10000)
 
 (defn read-channel-or-time-out [c & {:keys [timeout]
-                                     :or             {timeout 10000}}]
+                                     :or             {timeout 30000}}]
   (async/alt!!
     c ([result] result)
     (async/timeout timeout) (throw (Exception. "timeout!"))))
