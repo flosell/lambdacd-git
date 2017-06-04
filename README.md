@@ -35,6 +35,24 @@ SSH session factory. Call `init-ssh!` once, e.g. in your `-main` function:
   )
 ```
 
+### Authentication
+
+#### Git over SSH
+
+LambdaCD Git automatically picks up SSH-Keys in the default locations, e.g. `~/.ssh/id_rsa`. SSH Agents are also supported. 
+ 
+#### Git over HTTPS
+
+Authentication for HTTPS is supported using an instance of the JGit [`CredentialsProvider`](http://download.eclipse.org/jgit/site/4.1.1.201511131810-r/apidocs/org/eclipse/jgit/transport/CredentialsProvider.html). Add an instance to the LambdaCD config: 
+ 
+```clojure
+(let [config {:home-dir "/some/path"
+              :git {:credentials-provider (UsernamePasswordCredentialsProvider. "some-username" "some-password")}}]
+              ; ... 
+              )
+
+```
+
 ### Waiting for a commit
 
 ```clojure
