@@ -10,15 +10,13 @@
             [lambdacd.runners :as runners]
             [clojure.java.io :as io]))
 
-(def repo "git@github.com:flosell/testrepo")
-
 (defn wait-for-git [args ctx]
-  (core/wait-for-git ctx repo
+  (core/wait-for-git ctx (:repo-uri (:config ctx))
                      :ref "refs/heads/master"
                      :ms-between-polls (* 60 1000)))
 
 (defn clone [args ctx]
-  (core/clone ctx repo (:revision args) (:cwd args)))
+  (core/clone ctx (:repo-uri (:config ctx)) (:revision args) (:cwd args)))
 
 (defn ls [args ctx]
   (shell/bash ctx (:cwd args) "ls"))
@@ -35,7 +33,8 @@
 
 (defn -main [& args]
   (let [home-dir (io/file "/tmp/foo")
-        config   {:home-dir home-dir}
+        config   {:home-dir home-dir
+                  :repo-uri "git@github.com:flosell/testrepo"}
         pipeline (lambdacd/assemble-pipeline pipeline-structure config)]
     (core/init-ssh!)
     (runners/start-one-run-after-another pipeline)
