@@ -64,13 +64,17 @@
     (async/timeout timeout) (throw (Exception. "timeout!"))))
 
 (defn wait-for-step-waiting [state]
-  (let [step-status-ch (:step-status-channel @state)]
-    (read-channel-or-time-out
-      (async/go
-        (loop []
-          (let [status (async/<! step-status-ch)]
-            (if-not (= :waiting status)
-              (recur)))))))
+  (let [step-status-ch (:step-status-channel @state)
+        result-ch      (:result-channel @state)
+        result         (read-channel-or-time-out
+                         (async/go
+                           (loop []
+                             (let [[status ch] (async/alts! [step-status-ch result-ch])]
+                               (cond (= ch result-ch) (Exception. (str "Step already finished! " status))
+                                     (not= :waiting status) (recur)
+                                     :default nil)))))]
+    (when (instance? Exception result)
+      (throw result)))
   state)
 
 (defn execute-pipeline-step [state step]
