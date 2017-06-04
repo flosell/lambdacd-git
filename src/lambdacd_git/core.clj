@@ -140,7 +140,7 @@
                                  :or   {timeout 20}}]
   (support/capture-output ctx
     (let [ref          (or ref "master")
-          git          (git/clone-repo repo cwd :timeout timeout)
+          git          (git/clone-repo repo cwd :timeout timeout :credentials-provider (get-in ctx [:config :git :credentials-provider]))
           existing-ref (git/find-ref git ref)]
       (if existing-ref
         (do

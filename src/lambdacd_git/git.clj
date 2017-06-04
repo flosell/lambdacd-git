@@ -3,7 +3,8 @@
   (:import (org.eclipse.jgit.api Git)
            (org.eclipse.jgit.lib Ref TextProgressMonitor)
            (org.eclipse.jgit.revwalk RevCommit RevWalk)
-           (java.util Date)))
+           (java.util Date)
+           (org.eclipse.jgit.transport CredentialsProvider)))
 
 (defn- ref->hash [^Ref ref]
   (-> ref
@@ -54,14 +55,16 @@
     (ref-or-nil git ref))
   )
 
-(defn clone-repo [repo cwd & {:keys [timeout]
-                              :or   {timeout 20}}]
+(defn clone-repo [repo cwd & {:keys [timeout credentials-provider]
+                              :or   {timeout              20
+                                     credentials-provider (CredentialsProvider/getDefault)}}]
   (println "Cloning" repo "...")
   (-> (Git/cloneRepository)
       (.setURI repo)
       (.setDirectory (io/file cwd))
       (.setProgressMonitor (TextProgressMonitor. *out*))
       (.setTimeout timeout)
+      (.setCredentialsProvider credentials-provider)
       (.call)))
 
 (defn checkout-ref [^Git git ref]

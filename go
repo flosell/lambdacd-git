@@ -1,10 +1,14 @@
-#!/bin/bash 
+#!/bin/bash
 set -e
 
 SILENT="true"
 
 test() {
-  if [ "${SILENT}" == "true" ]; then
+  if [ -z "${LAMBDACD_GIT_TESTREPO_USERNAME}" ] || [ -z "${LAMBDACD_GIT_TESTREPO_PASSWORD}" ]; then
+    echo "Needs LAMBDACD_GIT_TESTREPO_USERNAME AND LAMBDACD_GIT_TESTREPO_PASSWORD"
+    # TODO: skip tests instead
+    exit 1
+  elif [ "${SILENT}" == "true" ]; then
     lein with-profile dev,silent test
   else
     lein test

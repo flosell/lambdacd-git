@@ -1,15 +1,17 @@
 before_script:
-- ./scripts/travis_prebuild.sh
+- "./scripts/travis_prebuild.sh"
 language: clojure
-script: ./go test
+script: "./go test"
 cache:
   directories:
-  - $HOME/.m2
-
+  - "$HOME/.m2"
 env:
-  - DEFAULT_NO_LAMBDACD_VERSION:
+  matrix:
+  - DEFAULT_NO_LAMBDACD_VERSION: 
   - LAMBDACD_VERSION: 0.13.2
   - LAMBDACD_VERSION: 0.13.1
   - LAMBDACD_VERSION: 0.13.0
   - LAMBDACD_VERSION: 0.12.1
   - LAMBDACD_VERSION: 0.11.0
+  global:
+    secure: BlrnB6c7Y0+LgYi1RQwUoU1kl1S7Qo7uNSaBEyfSEYyxF3IRb1WsLO1jJMXXC54OtJTPHZTbWsTFiPN0SC9BGCLpUl5cBeJzUteZqaenMNLfqC7Om25RoE88r5tVtq5biklQzD/lSg8IfKVPKcUfU+iJTJ76zjXe9lOS1hYsy2hPaJC9wQpr2OaNoElszG0DRLj+y9VATmtGMezzhZ989lNGJMAmz4GgHIXBMZusGJ5ajq1YPCIa1orQ6hMSTGv1q1zuqpynjPosaKx8PzgSfHUohjexoC8nKX27VT3uPop4PNsVCNfeNMzKwiFGF8wF89qDJyLD70E2RyHivQtswTu+PX4wDbVa3BOM2nXuyZ7B9Oist6RLozmmHM+bBF1m8MsLaymizY3TOhDmD9VpaeeaiXF1o19vadRsiEDjWC0ApDc1zLHu6qeaaNMqatCRezQBa3lpkwQ3w4CVlKLtpFViTooaGPivridr8+pwMH6n9qElYyDe69dgXQUSTmyvVOAb06N2BE33GTIE/5Au43hsnc668/IkGdpj+zBYfONYO1y3TRw9TXQmWIWh9PLtJld1d0eHqDDyqRfX1H8qklYmznAkOwB3tPluN7yYz7gZUoqFq+Lw32BN2BJ2KLxOUPkjNqBmUjuio1jdVacEkiA32X/oSRAw8/1+cyq+UOI=
