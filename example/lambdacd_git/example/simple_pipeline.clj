@@ -10,7 +10,7 @@
             [lambdacd.runners :as runners]
             [clojure.java.io :as io]))
 
-(def repo-uri "git@github.com:flosell/testrepo")
+(def repo-uri "https://github.com/flosell/testrepo.git")
 
 (defn wait-for-git [args ctx]
   (core/wait-for-git ctx repo-uri
