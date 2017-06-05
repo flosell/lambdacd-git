@@ -21,6 +21,8 @@
   :deploy-repositories [["clojars" {:creds :gpg}]
                         ["releases" :clojars]]
   :test-paths ["test" "example"]
+  :test-selectors {:default (constantly true)
+                   :skip-e2e-with-auth (complement :e2e-with-auth)}
   :profiles {:dev      {:main         lambdacd-git.example.simple-pipeline
                         :dependencies [[compojure "1.1.8"]
                                        [ring-server "0.3.1"]

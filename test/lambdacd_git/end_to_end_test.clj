@@ -58,7 +58,7 @@
                         (Thread/sleep 1000))
     (manualtrigger/post-id ctx (trigger-id ctx 1 [1 1]) {})))
 
-(deftest end-to-end-test
+(deftest example-pipeline-test
   (testing "the example-pipeline"
     (core/init-ssh!)
     (let [config                 {:home-dir (lambdacd-util/create-temp-dir)}
@@ -67,11 +67,13 @@
                                    (lambdacd-execution/run (:pipeline-def pipeline) (:context pipeline)))]
       (trigger-manually pipeline)
       (let [pipeline-result (deref future-pipeline-result 60000 :timeout)]
-        (is (= :success (:status pipeline-result)) (str "No success in " pipeline-result)))))
+        (is (= :success (:status pipeline-result)) (str "No success in " pipeline-result))))))
+
+(deftest ^:e2e-with-auth end-to-end-with-auth-test
   (testing "a complete pipeline with all features against private repositories using https and ssh"
     (core/init-ssh!)
-    (doseq [repo-config [{:repo-uri "git@gitlab.com:flosell-test/testrepo.git"}
-                         {:repo-uri "https://gitlab.com/flosell-test/testrepo.git"
+    (doseq [repo-config [{:repo-uri (or (System/getenv "LAMBDACD_GIT_TESTREPO_SSH") "git@gitlab.com:flosell-test/testrepo.git")}
+                         {:repo-uri (or (System/getenv "LAMBDACD_GIT_TESTREPO_HTTPS") "https://gitlab.com/flosell-test/testrepo.git")
                           :git      {:credentials-provider (UsernamePasswordCredentialsProvider. (System/getenv "LAMBDACD_GIT_TESTREPO_USERNAME")
                                                                                                  (System/getenv "LAMBDACD_GIT_TESTREPO_PASSWORD"))}}]]
       (testing (:repo-uri repo-config)
@@ -85,6 +87,6 @@
           ; Run pipeline again, this time it should be triggered by wait-for git that picks up the tag created in the previous run
           (let [future-second-pipeline-result (future
                                                 (lambdacd-execution/run (:pipeline-def pipeline) (:context pipeline)))
-                pipeline-result (deref future-second-pipeline-result 60000 :timeout)]
+                pipeline-result               (deref future-second-pipeline-result 60000 :timeout)]
             (is (= :success (:status pipeline-result)) (str "No success in " pipeline-result))))))))
 
