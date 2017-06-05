@@ -15,4 +15,8 @@ if [ -z "${encrypted_766accd2732a_key}" ] || [ -z "${encrypted_766accd2732a_iv}"
 else
   mkdir -p ~/.ssh
   openssl aes-256-cbc -K "${encrypted_766accd2732a_key}" -iv "${encrypted_766accd2732a_iv}" -in "${SCRIPT_DIR}/id_rsa_gitlab-test.enc" -out ~/.ssh/id_rsa -d
+  cat >> ~/.ssh/config <<EOF
+Host gitlab.com
+  StrictHostKeyChecking no
+EOF
 fi
