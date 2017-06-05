@@ -10,22 +10,18 @@
             [lambdacd.runners :as runners]
             [clojure.java.io :as io]))
 
+(def repo-uri "git@github.com:flosell/testrepo")
+
 (defn wait-for-git [args ctx]
-  (core/wait-for-git ctx (:repo-uri (:config ctx))
+  (core/wait-for-git ctx repo-uri
                      :ref "refs/heads/master"
                      :ms-between-polls (* 60 1000)))
 
 (defn clone [args ctx]
-  (core/clone ctx (:repo-uri (:config ctx)) (:revision args) (:cwd args)))
+  (core/clone ctx repo-uri (:revision args) (:cwd args)))
 
 (defn ls [args ctx]
   (shell/bash ctx (:cwd args) "ls"))
-
-(defn create-new-tag [args ctx]
-  (if (:repo-pushable (:config ctx))
-    (core/tag-version ctx (:cwd args) (:repo-uri (:config ctx)) "HEAD" (str (System/currentTimeMillis)))
-    {:status :success
-     :out    "SKIPPING, REPO IS NOT PUSHABLE"}))
 
 (def pipeline-structure
   `((either
@@ -34,14 +30,11 @@
      (with-workspace
        clone
        core/list-changes
-       ls
-       create-new-tag)))
+       ls)))
 
 (defn -main [& args]
   (let [home-dir (io/file "/tmp/foo")
-        config   {:home-dir      home-dir
-                  :repo-uri      "git@github.com:flosell/testrepo"
-                  :repo-pushable false}
+        config   {:home-dir      home-dir}
         pipeline (lambdacd/assemble-pipeline pipeline-structure config)]
     (core/init-ssh!)
     (runners/start-one-run-after-another pipeline)

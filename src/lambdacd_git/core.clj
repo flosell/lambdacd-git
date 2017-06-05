@@ -36,9 +36,9 @@
   (log/warn e (str "could not get current revision for ref " ref " on " remote))
   (println "could not get current revision for ref" ref "on" remote ":" (.getMessage e)))
 
-(defn- current-revision-or-nil [remote ref]
+(defn- current-revision-or-nil [remote ref config]
   (try
-    (git/current-revisions remote ref)
+    (git/current-revisions remote ref :credentials-provider (:credentials-provider (:git config)))
     (catch Exception e
       (report-git-exception ref remote e)
       nil)))
@@ -74,12 +74,12 @@
 (defn- clean-up-kill-switch->ch [a]
   (remove-watch a ::to-channel-watcher))
 
-(defn- wait-for-revision-changed [last-seen-revisions remote ref ctx ms-between-polls poll-notifications]
+(defn- wait-for-revision-changed [last-seen-revisions remote ref ctx ms-between-polls poll-notifications config]
   (println "Last seen revisions:" (or last-seen-revisions "None") ". Waiting for new commit...")
   (let [kill-channel (kill-switch->ch ctx)
         result       (loop [last-seen-revisions last-seen-revisions]
                        (support/if-not-killed ctx
-                         (let [current-revisions (current-revision-or-nil remote ref)]
+                         (let [current-revisions (current-revision-or-nil remote ref config)]
                            (if (and
                                  (not (nil? current-revisions))
                                  (not= current-revisions last-seen-revisions))
@@ -98,7 +98,7 @@
 (defn- initial-revisions [ctx remote ref]
   (or
     (last-seen-revisions-from-history ctx)
-    (current-revision-or-nil remote ref)))
+    (current-revision-or-nil remote ref (:config ctx))))
 
 (defn- persist-last-seen-revisions [wait-for-result last-seen-revisions ctx]
   (let [current-revisions    (:all-revisions wait-for-result)
@@ -131,7 +131,7 @@
           remote-poll-subscription  (event-bus/subscribe ctx ::git-remote-poll-notification)
           remote-poll-notifications (only-matching-remote remote
                                                           (event-bus/only-payload remote-poll-subscription))
-          wait-for-result           (wait-for-revision-changed initial-revisions remote ref-pred ctx ms-between-polls remote-poll-notifications)
+          wait-for-result           (wait-for-revision-changed initial-revisions remote ref-pred ctx ms-between-polls remote-poll-notifications (:config ctx))
           result                    (persist-last-seen-revisions wait-for-result initial-revisions ctx)]
       (event-bus/unsubscribe ctx ::git-remote-poll-notification remote-poll-subscription)
       result)))

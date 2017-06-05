@@ -6,9 +6,40 @@
             [lambdacd.state.core :as lambdacd-state]
             [lambdacd.execution :as lambdacd-execution]
             [lambdacd-git.example.simple-pipeline :as simple-pipeline]
-            [lambdacd-git.git-utils :as git-utils]
-            [lambdacd.steps.manualtrigger :as manualtrigger])
+            [lambdacd.steps.manualtrigger :as manualtrigger]
+            [lambdacd.steps.shell :as shell]
+            [lambdacd.steps.control-flow :refer [either with-workspace]]
+            [lambdacd.steps.manualtrigger :refer [wait-for-manual-trigger]])
   (:import (org.eclipse.jgit.transport CredentialsProvider UsernamePasswordCredentialsProvider)))
+
+(defn match-all-refs [_]
+  true)
+
+(defn wait-for-git [args ctx]
+  (core/wait-for-git ctx (:repo-uri (:config ctx))
+                     :ref match-all-refs
+                     :ms-between-polls (* 1 1000)))
+
+(defn clone [args ctx]
+  (core/clone ctx (:repo-uri (:config ctx)) (:revision args) (:cwd args)))
+
+(defn ls [args ctx]
+  (shell/bash ctx (:cwd args) "ls"))
+
+(defn create-new-tag [args ctx]
+  (core/tag-version ctx (:cwd args) (:repo-uri (:config ctx)) "HEAD" (str (System/currentTimeMillis))))
+
+(def pipeline-structure
+  `((either
+      wait-for-manual-trigger
+      wait-for-git)
+     (with-workspace
+       clone
+       core/list-changes
+       ls
+       create-new-tag)))
+
+; ======================================================================================================================
 
 (defmacro while-with-timeout [timeout-ms test & body]
   `(let [start-timestamp# (System/currentTimeMillis)]
@@ -28,20 +59,32 @@
     (manualtrigger/post-id ctx (trigger-id ctx 1 [1 1]) {})))
 
 (deftest end-to-end-test
-  (testing "a complete pipeline"
+  (testing "the example-pipeline"
     (core/init-ssh!)
-    (doseq [repo-config [{:repo-uri      "https://github.com/flosell/testrepo.git"
-                          :repo-pushable false}
-                         {:repo-uri      "https://gitlab.com/flosell-test/testrepo.git"
-                          :repo-pushable true
-                          :git           {:credentials-provider (UsernamePasswordCredentialsProvider. (System/getenv "LAMBDACD_GIT_TESTREPO_USERNAME")
-                                                                                                      (System/getenv "LAMBDACD_GIT_TESTREPO_PASSWORD"))}}]]
+    (let [config                 {:home-dir (lambdacd-util/create-temp-dir)}
+          pipeline               (lambdacd/assemble-pipeline simple-pipeline/pipeline-structure config)
+          future-pipeline-result (future
+                                   (lambdacd-execution/run (:pipeline-def pipeline) (:context pipeline)))]
+      (trigger-manually pipeline)
+      (let [pipeline-result (deref future-pipeline-result 60000 :timeout)]
+        (is (= :success (:status pipeline-result)) (str "No success in " pipeline-result)))))
+  (testing "a complete pipeline with all features against private repositories using https and ssh"
+    (core/init-ssh!)
+    (doseq [repo-config [{:repo-uri "git@gitlab.com:flosell-test/testrepo.git"}
+                         {:repo-uri "https://gitlab.com/flosell-test/testrepo.git"
+                          :git      {:credentials-provider (UsernamePasswordCredentialsProvider. (System/getenv "LAMBDACD_GIT_TESTREPO_USERNAME")
+                                                                                                 (System/getenv "LAMBDACD_GIT_TESTREPO_PASSWORD"))}}]]
       (testing (:repo-uri repo-config)
         (let [config                 (assoc repo-config :home-dir (lambdacd-util/create-temp-dir))
-              pipeline               (lambdacd/assemble-pipeline simple-pipeline/pipeline-structure config)
+              pipeline               (lambdacd/assemble-pipeline pipeline-structure config)
               future-pipeline-result (future
                                        (lambdacd-execution/run (:pipeline-def pipeline) (:context pipeline)))]
           (trigger-manually pipeline)
           (let [pipeline-result (deref future-pipeline-result 60000 :timeout)]
+            (is (= :success (:status pipeline-result)) (str "No success in " pipeline-result)))
+          ; Run pipeline again, this time it should be triggered by wait-for git that picks up the tag created in the previous run
+          (let [future-second-pipeline-result (future
+                                                (lambdacd-execution/run (:pipeline-def pipeline) (:context pipeline)))
+                pipeline-result (deref future-second-pipeline-result 60000 :timeout)]
             (is (= :success (:status pipeline-result)) (str "No success in " pipeline-result))))))))
 

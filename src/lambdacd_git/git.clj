@@ -22,8 +22,9 @@
 (defn- entry-to-ref-and-hash [entry]
   [(key entry) (ref->hash (val entry))])
 
-(defn current-revisions [remote ref-filter-pred]
+(defn current-revisions [remote ref-filter-pred & transport-opts]
   (let [ref-map (-> (Git/lsRemoteRepository)
+                    (set-transport-opts transport-opts)
                     (.setHeads true)
                     (.setTags true)
                     (.setRemote remote)
