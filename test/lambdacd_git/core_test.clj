@@ -209,7 +209,7 @@
       (is (= (commit-hash-by-msg state "initial commit") (:old-revision (step-result state))))
       (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))
       (is (str-containing (commit-hash-by-msg state "other commit") (:out (step-result state))))))
-  (testing "that we can pass a function that allows all refs"
+  (testing "that we can pass a function that allows all refs" ; flaky? 
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")
