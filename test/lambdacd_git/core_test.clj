@@ -291,7 +291,7 @@
       (is (= (commit-hash-by-msg state "initial commit") (:revision (step-result state))))))
   (testing "that it does not overwrite the latest commit with nil if polling for a new commit fails"
     (let [was-called? (atom false)
-          return-nil-on-first-call-then-some-commit (fn [_ _] (if @was-called? "some commit hash" (do (reset! was-called? true) nil)))]
+          return-nil-on-first-call-then-some-commit (fn [_ _ _] (if @was-called? "some commit hash" (do (reset! was-called? true) nil)))]
       (with-redefs [core/initial-revisions (constantly "some commit hash")
                     core/current-revision-or-nil return-nil-on-first-call-then-some-commit]
         (let [wait-at-least-two-polls (fn [state] (do (Thread/sleep 3) state))

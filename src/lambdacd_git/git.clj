@@ -22,6 +22,13 @@
 (defn- entry-to-ref-and-hash [entry]
   [(key entry) (ref->hash (val entry))])
 
+(defn- set-transport-opts [^TransportCommand transport-command {:keys [timeout ^CredentialsProvider credentials-provider]
+                                                                :or   {timeout              20
+                                                                       credentials-provider (CredentialsProvider/getDefault)}}]
+  (-> transport-command
+      (.setTimeout timeout)
+      (.setCredentialsProvider credentials-provider)))
+
 (defn current-revisions [remote ref-filter-pred & transport-opts]
   (let [ref-map (-> (Git/lsRemoteRepository)
                     (set-transport-opts transport-opts)
@@ -54,13 +61,6 @@
   (or
     (ref-or-nil git (str "origin/" ref))
     (ref-or-nil git ref)))
-
-(defn- set-transport-opts [^TransportCommand transport-command {:keys [timeout ^CredentialsProvider credentials-provider]
-                                                                :or   {timeout              20
-                                                                       credentials-provider (CredentialsProvider/getDefault)}}]
-  (-> transport-command
-      (.setTimeout timeout)
-      (.setCredentialsProvider credentials-provider)))
 
 (defn clone-repo [repo cwd & transport-opts]
   (println "Cloning" repo "...")
