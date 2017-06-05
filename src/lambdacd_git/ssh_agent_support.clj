@@ -1,5 +1,6 @@
 (ns lambdacd-git.ssh-agent-support
-  (:require [clojure.tools.logging :as log])
+  (:require [clojure.tools.logging :as log]
+            [lambdacd-git.ssh :as ssh])
   (:import (org.eclipse.jgit.transport SshSessionFactory JschConfigSessionFactory)
            (com.jcraft.jsch.agentproxy.connector SSHAgentConnector)
            (org.eclipse.jgit.util FS)
@@ -24,15 +25,8 @@
 
 ; INTERNAL: WILL BE MOVED TO ssh-init
 (defn session-factory [customizer-fns]
-  (proxy [JschConfigSessionFactory] []
-    (configure [host session]
-      ; just to implement the interface
-      )
-    (createDefaultJSch [^FS fs]
-      (let [jsch (proxy-super createDefaultJSch fs)]
-        (doall (map #(% jsch) customizer-fns))
-        jsch))))
+  (ssh/session-factory customizer-fns))
 
 ; DEPRECATED: USE lambdacd-git.ssh-init/init-ssh! instead!
 (defn initialize-ssh-agent-support! []
-  (SshSessionFactory/setInstance (session-factory [ssh-agent-customizer])))
+  (SshSessionFactory/setInstance (ssh/session-factory [ssh-agent-customizer])))
