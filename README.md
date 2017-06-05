@@ -171,6 +171,10 @@ You can tag any revision:
       do-something)))
 ```
 
+### SSH Configuration
+
+LambdaCD-Git honors the default [SSH Config files](https://linux.die.net/man/5/ssh_config) from `~/.ssh/config`(`/etc/ssh/ssh_config` currently not supported). Use these files to configure things like `StrictHostKeyChecking` or the `IdentityFile`. Alternatively, some options can be configured using `ssh-init`.
+
 ## Development
 
 Call `./go`
