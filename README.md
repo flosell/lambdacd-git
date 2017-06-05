@@ -22,37 +22,6 @@ Will replace the `lambdacd.steps.git` namespace in the the lambdacd-git library.
 
 You'll find a complete example here: [example/simple_pipeline.clj](https://github.com/flosell/lambdacd-git/blob/master/example/lambdacd_git/example/simple_pipeline.clj)
 
-### Initialization
-
-Some features of lambdacd-git (ssh-agent support, extended known_hosts support) require customizations to JGits singleton
-SSH session factory. Call `init-ssh!` once, e.g. in your `-main` function:
-
-```clojure
-(defn -main [& args]
-  ; ...
-  (lambdacd-git/init-ssh!)
-  ; ...
-  )
-```
-
-### Authentication
-
-#### Git over SSH
-
-LambdaCD Git automatically picks up SSH-Keys in the default locations, e.g. `~/.ssh/id_rsa`. SSH Agents are also supported. 
- 
-#### Git over HTTPS
-
-Authentication for HTTPS is supported using an instance of the JGit [`CredentialsProvider`](http://download.eclipse.org/jgit/site/4.1.1.201511131810-r/apidocs/org/eclipse/jgit/transport/CredentialsProvider.html). Add an instance to the LambdaCD config: 
- 
-```clojure
-(let [config {:home-dir "/some/path"
-              :git {:credentials-provider (UsernamePasswordCredentialsProvider. "some-username" "some-password")}}]
-              ; ... 
-              )
-
-```
-
 ### Waiting for a commit
 
 ```clojure
@@ -174,6 +143,37 @@ You can tag any revision:
 ### SSH Configuration
 
 LambdaCD-Git honors the default [SSH Config files](https://linux.die.net/man/5/ssh_config) from `~/.ssh/config`(`/etc/ssh/ssh_config` currently not supported (see #22)). Use this to configure things like `StrictHostKeyChecking` or the `IdentityFile`. Alternatively, some options can be configured using `ssh-init`.
+
+### Authentication
+
+#### Git over SSH
+
+LambdaCD Git automatically picks up SSH-Keys in the default locations, e.g. `~/.ssh/id_rsa`. SSH Agents are also supported. 
+ 
+#### Git over HTTPS
+
+Authentication for HTTPS is supported using an instance of the JGit [`CredentialsProvider`](http://download.eclipse.org/jgit/site/4.1.1.201511131810-r/apidocs/org/eclipse/jgit/transport/CredentialsProvider.html). Add an instance to the LambdaCD config: 
+ 
+```clojure
+(let [config {:home-dir "/some/path"
+              :git {:credentials-provider (UsernamePasswordCredentialsProvider. "some-username" "some-password")}}]
+              ; ... 
+              )
+```
+
+### Customize SSH Client
+
+Some features of lambdacd-git (ssh-agent support, extended known_hosts support) require customizations to JGits singleton
+SSH session factory. Call `init-ssh!` once, e.g. in your `-main` function:
+
+```clojure
+(defn -main [& args]
+  ; ...
+  (lambdacd-git/init-ssh!)
+  ; ...
+  )
+```
+
 
 ## Development
 
