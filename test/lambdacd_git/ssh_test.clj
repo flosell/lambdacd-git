@@ -16,8 +16,7 @@
       (customizer jsch)
       (is (= 1 (count (.getHostKey (.getHostKeyRepository jsch) "github.com" "ssh-rsa"))))))
   (testing "that it can deal with files that do not exist"
-    (let [
-          customizer       (set-known-hosts-customizer ["i-do-not-exist"])
-          jsch             (JSch.)]
+    (let [customizer (set-known-hosts-customizer ["i-do-not-exist"])
+          jsch       (JSch.)]
       (customizer jsch)
       (is (= 0 (count (.getHostKey (.getHostKeyRepository jsch))))))))
