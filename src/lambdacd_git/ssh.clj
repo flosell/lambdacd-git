@@ -4,10 +4,13 @@
             [clojure.java.io :as io])
   (:import (org.eclipse.jgit.util FS)
            (org.eclipse.jgit.transport JschConfigSessionFactory SshSessionFactory)
-           (java.io SequenceInputStream File FileInputStream)
+           (java.io SequenceInputStream File FileInputStream ByteArrayInputStream)
            (com.jcraft.jsch JSch IdentityRepository Identity)
            (clojure.lang SeqEnumeration)
            (java.util Vector Collection)))
+
+(defn- empty-input-stream-as-fallback []
+  (ByteArrayInputStream. (byte-array 0)))
 
 (defn- known-hosts-streams [known-hosts-files]
   (->> known-hosts-files
@@ -15,6 +18,7 @@
        (filter fs/exists?)
        (map io/file)
        (map (fn [^File f] (FileInputStream. f)))
+       (cons (empty-input-stream-as-fallback))
        (SeqEnumeration.)))
 
 (defn set-known-hosts-customizer [known-hosts-files]

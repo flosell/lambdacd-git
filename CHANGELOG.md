@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 * Support authentication with HTTPS using JGits [`CredentialsProvider`](http://download.eclipse.org/jgit/site/4.1.1.201511131810-r/apidocs/org/eclipse/jgit/transport/CredentialsProvider.html). See [README](./README.md) for details
 
+### Fixed
+
+* Fixed NullPointerException in case no `known_hosts` file exists (#21)
+
 ## 0.2.0
 
 ### Added
