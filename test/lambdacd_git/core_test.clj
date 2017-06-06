@@ -87,12 +87,12 @@
 
 (defn start-wait-for-git-step [state & {:keys [ref ms-between-polls] :or {ms-between-polls 100
                                                                           ref              "refs/heads/master"}}]
-  (let [wait-for-result-channel (async/go
-                                  (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
-                                                              (fn [_ ctx]
-                                                                (wait-for-git ctx (get-in @state [:git :remote]) :ref ref :ms-between-polls ms-between-polls)))]
-                                    (first (vals (:outputs execute-step-result)))))]
-    (swap! state #(assoc % :result-channel wait-for-result-channel))
+  (let [complete-step-result-channel (async/go
+                                       (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
+                                                                                             (fn [_ ctx]
+                                                                                               (wait-for-git ctx (get-in @state [:git :remote]) :ref ref :ms-between-polls ms-between-polls)))]
+                                         (first (vals (:outputs execute-step-result)))))]
+    (swap! state #(assoc % :result-channel complete-step-result-channel))
     (wait-for-step-waiting state)
     state))
 
