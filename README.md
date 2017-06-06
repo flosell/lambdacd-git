@@ -152,7 +152,19 @@ LambdaCD Git automatically picks up SSH-Keys in the default locations, e.g. `~/.
  
 #### Git over HTTPS
 
-Authentication for HTTPS is supported using an instance of the JGit [`CredentialsProvider`](http://download.eclipse.org/jgit/site/4.1.1.201511131810-r/apidocs/org/eclipse/jgit/transport/CredentialsProvider.html). Add an instance to the LambdaCD config: 
+Authentication for HTTPS is supported using an instance of the JGit [`CredentialsProvider`](http://download.eclipse.org/jgit/site/4.1.1.201511131810-r/apidocs/org/eclipse/jgit/transport/CredentialsProvider.html). 
+
+
+Import e.g. [`UsernamePasswordCredentialsProvider`](http://download.eclipse.org/jgit/site/4.1.1.201511131810-r/apidocs/org/eclipse/jgit/transport/UsernamePasswordCredentialsProvider.html) into your namespace:
+```clojure
+(ns <your-pipeline-name>.core
+  ;...
+  (:import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider)
+  ;...
+  )
+```
+
+Add an instance to the LambdaCD config: 
  
 ```clojure
 (let [config {:home-dir "/some/path"
