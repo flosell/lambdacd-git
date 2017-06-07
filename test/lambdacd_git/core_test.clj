@@ -3,13 +3,16 @@
             [lambdacd-git.core :refer :all :as core]
             [lambdacd-git.git-utils :as git-utils]
             [clojure.core.async :as async]
-            [lambdacd.state.internal.pipeline-state-updater :as pipeline-state]
+            [lambdacd.state.internal.pipeline-state-updater :as pipeline-state-updater]
+            [lambdacd.state.core :as state-core]
             [lambdacd-git.test-utils :refer [str-containing some-ctx-with]]
             [lambdacd.core :as lambdacd-core]
+            [lambdacd.presentation.pipeline-state :as presentation-state]
             [lambdacd.util :as util]
             [clojure.java.io :as io]
             [lambdacd.event-bus :as event-bus]
-            [ring.mock.request :as ring-mock]))
+            [ring.mock.request :as ring-mock]
+            [lambdacd-git.test-utils :as test-utils]))
 
 (defn- status-updates-channel [ctx]
   (let [step-result-updates-ch (event-bus/only-payload
@@ -22,7 +25,7 @@
   (let [is-killed (atom false)
         ctx (some-ctx-with :is-killed is-killed)
         step-status-channel (status-updates-channel ctx)]
-    (pipeline-state/start-pipeline-state-updater ctx)
+    (pipeline-state-updater/start-pipeline-state-updater ctx)
     (atom {:ctx ctx
            :is-killed is-killed
            :step-status-channel step-status-channel})))
@@ -150,6 +153,17 @@
     (ring-mock/request :post (str "/notify-git?remote="(or remote-to-notify (remote state)))))
   state)
 
+(defn- last-seen-revisions-from-history [ctx]
+  (let [last-step-result (presentation-state/most-recent-step-result-with :_git-last-seen-revisions ctx)
+        result            (:_git-last-seen-revisions last-step-result)]
+    (println "last seen revision found:" result)
+    result))
+
+(defn- wait-for-pipeline-state-to-pick-up-last-git-revision [state]
+  (test-utils/while-with-timeout 1000 (nil? (last-seen-revisions-from-history (:ctx @state)))
+                                 (Thread/sleep 10))
+  state)
+
 (deftest wait-for-git-test
   (testing "that it waits for a new commit to happen and that it prints out information on old and new commit"
     (let [state (-> (init-state)
@@ -209,7 +223,7 @@
       (is (= (commit-hash-by-msg state "initial commit") (:old-revision (step-result state))))
       (is (= (commit-hash-by-msg state "other commit") (:revision (step-result state))))
       (is (str-containing (commit-hash-by-msg state "other commit") (:out (step-result state))))))
-  (testing "that we can pass a function that allows all refs" ; flaky?
+  (testing "that we can pass a function that allows all refs"
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")
@@ -218,6 +232,7 @@
                     (start-wait-for-git-step :ref (fn [_] true))
                     (git-commit "some commit on master")
                     (wait-for-step-to-complete)
+                    (wait-for-pipeline-state-to-pick-up-last-git-revision)
 
                     (git-checkout "some-branch")
                     (start-wait-for-git-step :ref (fn [_] true))
@@ -237,13 +252,14 @@
                     (get-step-result))]
       (is (str-containing (commit-hash-by-msg state "initial commit") (:out (step-result state))))
       (is (str-containing (commit-hash-by-msg state "other commit") (:out (step-result state))))))
-  (testing "that waiting returns immediately when a commit happened while it was not waiting" ; flaky?
+  (testing "that waiting returns immediately when a commit happened while it was not waiting"
     (let [state (-> (init-state)
                     (git-init)
                     (git-commit "initial commit")
                     (start-wait-for-git-step)
                     (git-commit "other commit")
                     (wait-for-step-to-complete)
+                    (wait-for-pipeline-state-to-pick-up-last-git-revision)
                     (git-commit "commit while not waiting")
                     (start-wait-for-git-step)
                     (get-step-result))]

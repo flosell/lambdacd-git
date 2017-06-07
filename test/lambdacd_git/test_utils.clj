@@ -30,3 +30,10 @@
 (defn some-ctx-with [& args]
   (add-pipeline-state-component
     (apply assoc (some-ctx-template) args)))
+
+(defmacro while-with-timeout [timeout-ms test & body]
+  `(let [start-timestamp# (System/currentTimeMillis)]
+     (while (and
+              ~test
+              (< (System/currentTimeMillis) (+ start-timestamp# ~timeout-ms)))
+       ~@body)))

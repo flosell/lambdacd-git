@@ -8,6 +8,7 @@
             [lambdacd-git.example.simple-pipeline :as simple-pipeline]
             [lambdacd.steps.manualtrigger :as manualtrigger]
             [lambdacd.steps.shell :as shell]
+            [lambdacd-git.test-utils :as test-utils]
             [lambdacd.steps.control-flow :refer [either with-workspace]]
             [lambdacd.steps.manualtrigger :refer [wait-for-manual-trigger]])
   (:import (org.eclipse.jgit.transport CredentialsProvider UsernamePasswordCredentialsProvider)))
@@ -41,12 +42,7 @@
 
 ; ======================================================================================================================
 
-(defmacro while-with-timeout [timeout-ms test & body]
-  `(let [start-timestamp# (System/currentTimeMillis)]
-     (while (and
-              ~test
-              (< (System/currentTimeMillis) (+ start-timestamp# ~timeout-ms)))
-       ~@body)))
+
 
 (defn trigger-id [ctx build-number step-id]
   (let [step-result (lambdacd-state/get-step-result ctx build-number step-id)]
@@ -54,7 +50,7 @@
 
 (defn- trigger-manually [pipeline]
   (let [ctx (:context pipeline)]
-    (while-with-timeout 10000 (nil? (trigger-id ctx 1 [1 1]))
+    (test-utils/while-with-timeout 10000 (nil? (trigger-id ctx 1 [1 1]))
                         (Thread/sleep 1000))
     (manualtrigger/post-id ctx (trigger-id ctx 1 [1 1]) {})))
 
