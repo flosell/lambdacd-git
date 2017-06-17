@@ -11,7 +11,6 @@
             [ring.middleware.params :as ring-params]
             [ring.util.response :as ring-response]
             [compojure.core :as compojure]
-            [lambdacd-git.ssh-agent-support :as ssh-agent-support]
             [lambdacd-git.ssh :as ssh])
   (:import (java.util.regex Pattern)
            (java.util Date)
@@ -210,13 +209,8 @@
 (defn notifications-for [pipeline]
   (compojure/POST "/notify-git" request (notify-git-handler (:context pipeline) request)))
 
-(defn init-ssh! [& {:keys [use-agent known-hosts-files identity-file]
-                    :or   {use-agent         true
-                           known-hosts-files ["~/.ssh/known_hosts" "/etc/ssh/ssh_known_hosts"]}}]
-  (let [customizer-fns (filter some? [(when use-agent ssh-agent-support/ssh-agent-customizer)
-                                      (when known-hosts-files (ssh/set-known-hosts-customizer known-hosts-files))
-                                      (when identity-file (ssh/set-identity-file-customizer identity-file))])]
-    (SshSessionFactory/setInstance (ssh/session-factory customizer-fns))))
+(defn ^:deprecated init-ssh! [& {:as config}]
+  (SshSessionFactory/setInstance (ssh/session-factory-for-config config)))
 
 (defn tag-version [ctx cwd repo revision tag & {:as custom-git-config}]
   (support/capture-output ctx

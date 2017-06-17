@@ -13,6 +13,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
   * `lambdacd-git.git/clone-repo`
   * `lambdacd-git.git/push`
 
+### Removed
+
+* The following deprected functions have been removed: 
+  * `lambdacd-git.ssh-agent-support/session-factory`
+  * `lambdacd-git.ssh-agent-support/initialize-ssh-agent-support!`
+
 ## 0.2.1
 
 ### Added

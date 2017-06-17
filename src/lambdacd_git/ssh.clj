@@ -1,7 +1,8 @@
 (ns lambdacd-git.ssh
   "Functions to customize handling of SSH connections"
   (:require [me.raynes.fs :as fs]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [lambdacd-git.ssh-agent-support :as ssh-agent-support])
   (:import (org.eclipse.jgit.util FS)
            (org.eclipse.jgit.transport JschConfigSessionFactory SshSessionFactory)
            (java.io SequenceInputStream File FileInputStream ByteArrayInputStream)
@@ -51,3 +52,11 @@
       (let [jsch (proxy-super createDefaultJSch fs)]
         (doall (map #(% jsch) customizer-fns))
         jsch))))
+
+(defn session-factory-for-config [{:keys [use-agent known-hosts-files identity-file]
+                                   :or   {use-agent         true
+                                          known-hosts-files ["~/.ssh/known_hosts" "/etc/ssh/ssh_known_hosts"]}}]
+  (let [customizer-fns (filter some? [(when use-agent ssh-agent-support/ssh-agent-customizer)
+                                      (when known-hosts-files (set-known-hosts-customizer known-hosts-files))
+                                      (when identity-file (set-identity-file-customizer identity-file))])]
+    (session-factory customizer-fns)))
