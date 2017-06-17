@@ -36,4 +36,6 @@
      (while (and
               ~test
               (< (System/currentTimeMillis) (+ start-timestamp# ~timeout-ms)))
-       ~@body)))
+       ~@body)
+     (if (> (System/currentTimeMillis) (+ start-timestamp# ~timeout-ms))
+       (throw (Exception. "while-with-timeout timed out")))))

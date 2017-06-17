@@ -160,7 +160,7 @@
     result))
 
 (defn- wait-for-pipeline-state-to-pick-up-last-git-revision [state]
-  (test-utils/while-with-timeout 1000 (nil? (last-seen-revisions-from-history (:ctx @state)))
+  (test-utils/while-with-timeout 10000 (nil? (last-seen-revisions-from-history (:ctx @state)))
                                  (Thread/sleep 10))
   state)
 
