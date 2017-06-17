@@ -139,6 +139,29 @@ You can tag any revision:
       deploy-to-live
       do-something)))
 ```
+## Configuration (versions >= 0.3.0)
+
+Certain values can be configured using LambdaCDs config-map. The following example shows the default:  
+
+```clojure
+(let [config  {:git {:timeout              20                               ; the timeout for remote operations in seconds
+                     :credentials-provider (CredentialsProvider/getDefault) ; the credentials-provider to use for HTTPS clones (e.g. UsernamePasswordCredentialsProvider)
+               :ssh {:use-agent         true                                              ; whether to use an SSH agent
+                     :known-hosts-files ["~/.ssh/known_hosts" "/etc/ssh/ssh_known_hosts"] ; which known-hosts files to use for SSH connections 
+                     :identity-file     nil}}}]                                           ; override the normal SSH behavior and explicitly specify a key to use
+  (lambdacd/assemble-pipeline pipeline-structure config))
+```
+
+The same parameters can also be used as parameters to git operations directly, e.g. if different repositories need different credentials:
+ 
+```clojure
+(defn clone [args ctx]
+  (lambdacd-git/clone ctx repo branch-or-tag-or-commit-hash (:cwd args) 
+                      :credentials-provider (UsernamePasswordCredentialsProvider. (System/getenv "LAMBDACD_GIT_TESTREPO_USERNAME")
+                                                                                  (System/getenv "LAMBDACD_GIT_TESTREPO_PASSWORD"))))
+```
+
+## Configuration (versions < 0.3.0)
 
 ### SSH Configuration
 

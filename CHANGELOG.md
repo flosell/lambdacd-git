@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 ### Changed
 
 * Consolidated configuration (e.g. timeouts, ssh options, ...): lambdacd-git can now be configured through LambdaCDs config map and configuration can be overridden per call using function arguments.
+  
+  Configuration (e.g. timeouts) that were previously only possible for some functions are now available throughout. SSH config that could previously only be defined for the whole JVM can now be configured per pipeline (through the config map) and even per step (through function parameters).
+  
+  See README for details
 * Breaking changes in utility namespace `lambdacd-git.git`: Removed keyword arguments and replaced them with an optional options-map in the following functions:
   * `lambdacd-git.git/current-revisions`
   * `lambdacd-git.git/clone-repo`
@@ -15,7 +19,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ### Deprecated
 
-* `lambdacd-git.core/init-ssh!` has been replaced by config via config-map and will be removed in future releases
+* `lambdacd-git.core/init-ssh!` has been replaced by config via config-map (see above) and will be removed in future releases.
 
 ### Removed
 
