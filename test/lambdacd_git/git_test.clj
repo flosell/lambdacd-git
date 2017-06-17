@@ -29,7 +29,7 @@
     (let [git-handle (-> (git-init)
                          (git-commit "some commit"))]
       (is (= {"refs/heads/master" (commit-by-msg git-handle "some commit")}
-             (current-revisions (:remote git-handle) (match-branch "master"))))))
+             (current-revisions (:remote git-handle) (match-branch "master") {})))))
   (testing "that it can get the head of all branches"
     (let [git-handle (-> (git-init)
                          (git-commit "some commit on master")
@@ -38,21 +38,21 @@
                          (git-checkout "master"))]
       (is (= {"refs/heads/some-branch" (commit-by-msg git-handle "some commit on branch")
               "refs/heads/master"      (commit-by-msg git-handle "some commit on master")}
-             (current-revisions (:remote git-handle) (match-all-refs))))))
+             (current-revisions (:remote git-handle) (match-all-refs) {})))))
   (testing "that it returns an emtpy map if no ref matches"
     (let [git-handle (-> (git-init)
                          (git-commit "some commit on master"))]
       (is (= {}
-             (current-revisions (:remote git-handle) (no-branches))))))
+             (current-revisions (:remote git-handle) (no-branches) {})))))
   (testing "that it can get the head of tags"
     (let [git-handle (-> (git-init)
                          (git-commit "some commit on master")
                          (git-tag "some-tag"))]
       (is (= {"refs/heads/master"  (commit-by-msg git-handle "some commit on master")
               "refs/tags/some-tag" (commit-by-msg git-handle "some commit on master")}
-             (current-revisions (:remote git-handle) (match-all-refs))))
+             (current-revisions (:remote git-handle) (match-all-refs) {})))
       (is (= {"refs/tags/some-tag" (commit-by-msg git-handle "some commit on master")}
-             (current-revisions (:remote git-handle) (match-tag "some-tag")))))))
+             (current-revisions (:remote git-handle) (match-tag "some-tag") {}))))))
 
 (deftest clone-repo-test
   (testing "that we can clone the head of master"
@@ -60,7 +60,7 @@
                          (git-add-file "some-file" "some content")
                          (git-commit "some commit on master"))
           workspace (util/create-temp-dir)]
-      (clone-repo (:remote git-handle) workspace)
+      (clone-repo (:remote git-handle) workspace {})
       (is (= "some content"
              (slurp (io/file workspace "some-file")))))))
 
@@ -173,7 +173,7 @@
                          (git-commit "some commit on master"))
           workspace (:dir git-handle)
           remote (:remote remote-git)]
-      (push workspace remote)
+      (push workspace remote {})
       (is (= "some commit on master" (clojure.string/trim (get-last-commit-msg remote-git))))))
   (testing "that it pushes a tag"
     (let [remote-git (git-init)
@@ -183,5 +183,5 @@
                          (git-tag "some-tag"))
           workspace (:dir git-handle)
           remote (:remote remote-git)]
-      (push workspace remote)
+      (push workspace remote {})
       (is (= "some-tag\n" (git-tag-list remote-git "HEAD"))))))

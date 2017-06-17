@@ -34,9 +34,13 @@
   (log/warn e (str "could not get current revision for ref " ref " on " remote))
   (println "could not get current revision for ref" ref "on" remote ":" (.getMessage e)))
 
-(defn- current-revision-or-nil [remote ref config]
+(defn git-config [ctx custom-git-config]
+  (merge (get-in ctx [:config :git])
+         custom-git-config))
+
+(defn- current-revision-or-nil [remote ref git-config]
   (try
-    (git/current-revisions remote ref :credentials-provider (:credentials-provider (:git config)))
+    (git/current-revisions remote ref git-config)
     (catch Exception e
       (report-git-exception ref remote e)
       nil)))
@@ -72,12 +76,12 @@
 (defn- clean-up-kill-switch->ch [a]
   (remove-watch a ::to-channel-watcher))
 
-(defn- wait-for-revision-changed [last-seen-revisions remote ref ctx ms-between-polls poll-notifications config]
+(defn- wait-for-revision-changed [last-seen-revisions remote ref ctx ms-between-polls poll-notifications git-config]
   (println "Last seen revisions:" (or last-seen-revisions "None") ". Waiting for new commit...")
   (let [kill-channel (kill-switch->ch ctx)
         result       (loop [last-seen-revisions last-seen-revisions]
                        (support/if-not-killed ctx
-                         (let [current-revisions (current-revision-or-nil remote ref config)]
+                         (let [current-revisions (current-revision-or-nil remote ref git-config)]
                            (if (and
                                  (not (nil? current-revisions))
                                  (not= current-revisions last-seen-revisions))
@@ -93,10 +97,10 @@
   (let [last-step-result (pipeline-state/most-recent-step-result-with :_git-last-seen-revisions ctx)]
     (:_git-last-seen-revisions last-step-result)))
 
-(defn- initial-revisions [ctx remote ref]
+(defn- initial-revisions [ctx remote ref custom-git-config]
   (or
     (last-seen-revisions-from-history ctx)
-    (current-revision-or-nil remote ref (:config ctx))))
+    (current-revision-or-nil remote ref custom-git-config)))
 
 (defn- persist-last-seen-revisions [wait-for-result last-seen-revisions ctx]
   (let [current-revisions    (:all-revisions wait-for-result)
@@ -121,24 +125,30 @@
 (defn wait-for-git
   "step that waits for the head of a ref to change"
   [ctx remote & {:keys [ref ms-between-polls]
+                 :as   custom-git-config-and-params
                  :or   {ms-between-polls (* 10 1000)
                         ref              "refs/heads/master"}}]
   (support/capture-output ctx
     (let [ref-pred                  (to-ref-pred ref)
-          initial-revisions         (initial-revisions ctx remote ref-pred)
+          git-config                (git-config ctx custom-git-config-and-params)
+          initial-revisions         (initial-revisions ctx remote ref-pred git-config)
           remote-poll-subscription  (event-bus/subscribe ctx ::git-remote-poll-notification)
           remote-poll-notifications (only-matching-remote remote
                                                           (event-bus/only-payload remote-poll-subscription))
-          wait-for-result           (wait-for-revision-changed initial-revisions remote ref-pred ctx ms-between-polls remote-poll-notifications (:config ctx))
+          wait-for-result           (wait-for-revision-changed initial-revisions remote ref-pred ctx ms-between-polls remote-poll-notifications git-config)
           result                    (persist-last-seen-revisions wait-for-result initial-revisions ctx)]
       (event-bus/unsubscribe ctx ::git-remote-poll-notification remote-poll-subscription)
       result)))
 
-(defn clone [ctx repo ref cwd & {:keys [timeout]
-                                 :or   {timeout 20}}]
+(defn clone
+  "Clone a repository into a given working directory.
+
+  Takes the steps ctx, a repository uri and ref to clone and a working directory to clone into.
+  Takes optional custom git-config settings."
+  [ctx repo ref cwd & {:as custom-git-config}]
   (support/capture-output ctx
     (let [ref          (or ref "master")
-          git          (git/clone-repo repo cwd :timeout timeout :credentials-provider (get-in ctx [:config :git :credentials-provider]))
+          git          (git/clone-repo repo cwd (git-config ctx custom-git-config))
           existing-ref (git/find-ref git ref)]
       (if existing-ref
         (do
@@ -208,7 +218,7 @@
                                       (when identity-file (ssh/set-identity-file-customizer identity-file))])]
     (SshSessionFactory/setInstance (ssh/session-factory customizer-fns))))
 
-(defn tag-version [ctx cwd repo revision tag]
+(defn tag-version [ctx cwd repo revision tag & {:as custom-git-config}]
   (support/capture-output ctx
     (let [rev (or revision "HEAD")]
       (cond
@@ -217,5 +227,5 @@
         (or (nil? tag) (empty? tag)) (failure "No tag name was given.")
         (or (nil? repo) (empty? repo)) (failure "No remote repository was given.")
         :else (do (git/tag-revision cwd rev tag)
-                  (git/push cwd repo :credentials-provider (get-in ctx [:config :git :credentials-provider]))
+                  (git/push cwd repo (git-config ctx custom-git-config))
                   {:status :success})))))

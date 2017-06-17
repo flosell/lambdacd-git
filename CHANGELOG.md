@@ -3,6 +3,15 @@ This changelog contains a loose collection of changes in every release. I will a
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to a "shifted" version of semantic versioning while the major version remains at 0: Minor version changes indicate breaking changes, patch version changes should not contain breaking changes.
 
+## 0.3.0
+
+### Changed
+
+* Consolidated configuration (e.g. timeouts, ssh options, ...): lambdacd-git can now be configured through LambdaCDs config map and configuration can be overridden per call using function arguments.
+* Breaking changes in utility namespace `lambdacd-git.git`: Removed keyword arguments and replaced them with an optional options-map in the following functions:
+  * `lambdacd-git.git/current-revisions`
+  * `lambdacd-git.git/clone-repo`
+  * `lambdacd-git.git/push`
 
 ## 0.2.1
 

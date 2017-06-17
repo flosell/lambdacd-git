@@ -29,9 +29,9 @@
       (.setTimeout timeout)
       (.setCredentialsProvider credentials-provider)))
 
-(defn current-revisions [remote ref-filter-pred & transport-opts]
+(defn current-revisions [remote ref-filter-pred git-config]
   (let [ref-map (-> (Git/lsRemoteRepository)
-                    (set-transport-opts transport-opts)
+                    (set-transport-opts git-config)
                     (.setHeads true)
                     (.setTags true)
                     (.setRemote remote)
@@ -62,10 +62,10 @@
     (ref-or-nil git (str "origin/" ref))
     (ref-or-nil git ref)))
 
-(defn clone-repo [repo cwd & transport-opts]
+(defn clone-repo [repo cwd git-config]
   (println "Cloning" repo "...")
   (-> (Git/cloneRepository)
-      (set-transport-opts transport-opts)
+      (set-transport-opts git-config)
       (.setURI repo)
       (.setDirectory (io/file cwd))
       (.setProgressMonitor (TextProgressMonitor. *out*))
@@ -133,12 +133,12 @@
         (.setName tag)
         (.call))))
 
-(defn push [workspace remote & transport-opts]
+(defn push [workspace remote git-config]
   (println "Pushing changes...")
   (let [git (git-open workspace)]
     (-> git
         (.push)
-        (set-transport-opts transport-opts)
+        (set-transport-opts git-config)
         (.setPushAll)
         (.setPushTags)
         (.setRemote remote)
