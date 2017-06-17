@@ -22,6 +22,12 @@
     (async/pipe step-result-updates-ch only-status-updates)
     only-status-updates))
 
+(defn- clear-channel [ch]
+  (loop []
+    (let [[v _] (async/alts!! [ch] :default :finished)]
+      (when (not= :finished v)
+        (recur)))))
+
 (defn- init-state []
   (let [is-killed (atom false)
         ctx (some-ctx-with :is-killed is-killed)
@@ -69,19 +75,19 @@
 
 (defn wait-for-step-waiting [state]
   (let [step-status-ch (:step-status-channel @state)
-        result-ch      (:result-channel @state)
         result         (read-channel-or-time-out
                          (async/go
                            (loop []
-                             (let [[status ch] (async/alts! [step-status-ch result-ch])]
-                               (cond (= ch result-ch) (Exception. (str "Step already finished! " status))
-                                     (not= :waiting status) (recur)
-                                     :default nil)))))]
+                             (let [status (async/<! step-status-ch)]
+                               (if (not= :waiting status)
+                                 (recur)
+                                 nil)))))]
     (when (instance? Exception result)
       (throw result)))
   state)
 
 (defn execute-pipeline-step [state step]
+  (clear-channel (:step-status-channel @state))
   (let [future (future
                  (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
                                                                        step)]
@@ -89,10 +95,14 @@
     (swap! state #(assoc % :step-future future))
     state))
 
-(defn start-wait-for-git-step [state & {:keys [ref ms-between-polls] :or {ms-between-polls 100
-                                                                          ref              "refs/heads/master"}}]
+(defn start-wait-for-git-step [state & {:keys [ref ms-between-polls wait] :or {ms-between-polls 100
+                                                                          ref              "refs/heads/master"
+                                                                               wait true}}]
   (execute-pipeline-step state (fn [_ ctx]
-                                 (wait-for-git ctx (get-in @state [:git :remote]) :ref ref :ms-between-polls ms-between-polls))))
+                                 (wait-for-git ctx (get-in @state [:git :remote]) :ref ref :ms-between-polls ms-between-polls)))
+  (when wait
+    (wait-for-step-waiting state))
+  state)
 
 
 (defn start-clone-step [state ref cwd]
@@ -269,7 +279,7 @@
                     (wait-for-step-to-complete)
                     (wait-for-pipeline-state-to-have-seen-commit "master" "other commit")
                     (git-commit "commit while not waiting")
-                    (start-wait-for-git-step)
+                    (start-wait-for-git-step :wait false)
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
       (is (= (commit-hash-by-msg state "other commit") (:old-revision (step-result state))))
