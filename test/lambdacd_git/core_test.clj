@@ -153,15 +153,19 @@
     (ring-mock/request :post (str "/notify-git?remote="(or remote-to-notify (remote state)))))
   state)
 
-(defn- last-seen-revisions-from-history [ctx]
+(defn- last-seen-revisions-from-history [ctx branch]
   (let [last-step-result (presentation-state/most-recent-step-result-with :_git-last-seen-revisions ctx)
         result            (:_git-last-seen-revisions last-step-result)]
-    (println "last seen revision found:" result)
-    result))
+    (get result (str "refs/heads/"branch))))
 
-(defn- wait-for-pipeline-state-to-pick-up-last-git-revision [state]
-  (test-utils/while-with-timeout 1000 (nil? (last-seen-revisions-from-history (:ctx @state)))
-                                 (Thread/sleep 10))
+(defn- wait-for-pipeline-state-to-have-seen-commit [state branch msg]
+  (let [commit-hash-to-wait-for (commit-hash-by-msg state msg)]
+    (test-utils/while-with-timeout 10000 (let [current-last-seen-hash  (last-seen-revisions-from-history (:ctx @state) branch)
+                                               result (not= commit-hash-to-wait-for
+                                                            current-last-seen-hash)]
+                                           (println "waiting for" commit-hash-to-wait-for "but till now it's" current-last-seen-hash)
+                                           result)
+                                   (Thread/sleep 10)))
   state)
 
 (deftest wait-for-git-test
@@ -228,11 +232,12 @@
                     (git-init)
                     (git-commit "initial commit")
                     (git-checkout-b "some-branch")
+                    (git-checkout "master")
 
                     (start-wait-for-git-step :ref (fn [_] true))
                     (git-commit "some commit on master")
                     (wait-for-step-to-complete)
-                    (wait-for-pipeline-state-to-pick-up-last-git-revision)
+                    (wait-for-pipeline-state-to-have-seen-commit "master" "some commit on master")
 
                     (git-checkout "some-branch")
                     (start-wait-for-git-step :ref (fn [_] true))
@@ -240,7 +245,7 @@
 
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
-      (is (= (commit-hash-by-msg state "some commit on master") (:old-revision (step-result state))))
+      (is (= (commit-hash-by-msg state "initial commit") (:old-revision (step-result state)))) ; FIXME: is this correct?
       (is (= (commit-hash-by-msg state "some commit on branch") (:revision (step-result state))))
       (is (str-containing (commit-hash-by-msg state "some commit on branch") (:out (step-result state))))))
   (testing "that it prints out information on old and new commit hashes"
@@ -259,7 +264,7 @@
                     (start-wait-for-git-step)
                     (git-commit "other commit")
                     (wait-for-step-to-complete)
-                    (wait-for-pipeline-state-to-pick-up-last-git-revision)
+                    (wait-for-pipeline-state-to-have-seen-commit "master" "other commit")
                     (git-commit "commit while not waiting")
                     (start-wait-for-git-step)
                     (get-step-result))]
