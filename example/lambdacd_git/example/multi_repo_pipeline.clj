@@ -50,7 +50,6 @@
   (let [home-dir (util/create-temp-dir)
         config   {:home-dir home-dir}
         pipeline (lambdacd/assemble-pipeline pipeline-structure config)]
-    (core/init-ssh!)
     (runners/start-one-run-after-another pipeline)
     (ring-server/serve (routes
                          (ui/ui-for pipeline)

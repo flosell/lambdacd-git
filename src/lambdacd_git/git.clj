@@ -1,10 +1,12 @@
 (ns lambdacd-git.git
-  (:require [clojure.java.io :as io])
-  (:import (org.eclipse.jgit.api Git TransportCommand)
+  (:require [clojure.java.io :as io]
+            [lambdacd-git.ssh :as ssh]
+            [lambdacd-git.ssh-agent-support :as ssh-agent-support])
+  (:import (org.eclipse.jgit.api Git TransportCommand TransportConfigCallback)
            (org.eclipse.jgit.lib Ref TextProgressMonitor)
            (org.eclipse.jgit.revwalk RevCommit RevWalk)
            (java.util Date)
-           (org.eclipse.jgit.transport CredentialsProvider)))
+           (org.eclipse.jgit.transport CredentialsProvider Transport SshTransport)))
 
 (defn- ref->hash [^Ref ref]
   (-> ref
@@ -22,12 +24,20 @@
 (defn- entry-to-ref-and-hash [entry]
   [(key entry) (ref->hash (val entry))])
 
-(defn- set-transport-opts [^TransportCommand transport-command {:keys [timeout ^CredentialsProvider credentials-provider]
+(defn- transport-config-callback ^TransportConfigCallback [ssh-config]
+  (reify TransportConfigCallback
+    (configure [this transport]
+      (when (instance? SshTransport transport)
+        (.setSshSessionFactory transport (ssh/session-factory-for-config ssh-config))))))
+
+(defn- set-transport-opts [^TransportCommand transport-command {:keys [timeout ^CredentialsProvider credentials-provider ssh]
                                                                 :or   {timeout              20
-                                                                       credentials-provider (CredentialsProvider/getDefault)}}]
+                                                                       credentials-provider (CredentialsProvider/getDefault)
+                                                                       ssh                  {}}}]
   (-> transport-command
       (.setTimeout timeout)
-      (.setCredentialsProvider credentials-provider)))
+      (.setCredentialsProvider credentials-provider)
+      (.setTransportConfigCallback (transport-config-callback ssh))))
 
 (defn current-revisions [remote ref-filter-pred git-config]
   (let [ref-map (-> (Git/lsRemoteRepository)

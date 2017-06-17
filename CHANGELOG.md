@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
   * `lambdacd-git.git/clone-repo`
   * `lambdacd-git.git/push`
 
+### Deprecated
+
+* `lambdacd-git.core/init-ssh!` has been replaced by config via config-map and will be removed in future releases
+
 ### Removed
 
 * The following deprected functions have been removed: 
