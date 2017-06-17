@@ -122,7 +122,13 @@
     filtering-chan))
 
 (defn wait-for-git
-  "step that waits for the head of a ref to change"
+  "Step that waits for the head of a ref to change.
+
+  Takes the steps ctx and the remotes uri and the following optional parameters:
+  * `ms-between-polls`: The milliseconds to wait between polling for a change
+  * `ref`: The name of a ref (e.g. of a branch or a tag) where the step waits for a change.
+    Can also be a function-predicate that takes the name of the ref as string
+  * Custom git-options (override the default config)"
   [ctx remote & {:keys [ref ms-between-polls]
                  :as   custom-git-config-and-params
                  :or   {ms-between-polls (* 10 1000)
