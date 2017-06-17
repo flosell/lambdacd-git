@@ -12,7 +12,8 @@
             [clojure.java.io :as io]
             [lambdacd.event-bus :as event-bus]
             [ring.mock.request :as ring-mock]
-            [lambdacd-git.test-utils :as test-utils]))
+            [lambdacd-git.test-utils :as test-utils])
+  (:import (java.util.concurrent TimeoutException)))
 
 (defn- status-updates-channel [ctx]
   (let [step-result-updates-ch (event-bus/only-payload
@@ -81,23 +82,18 @@
   state)
 
 (defn execute-pipeline-step [state step]
-  (let [wait-for-result-channel (async/go
-                                  (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
-                                                              step)]
-                                    (first (vals (:outputs execute-step-result)))))]
-    (swap! state #(assoc % :result-channel wait-for-result-channel))
+  (let [future (future
+                 (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
+                                                                       step)]
+                   (first (vals (:outputs execute-step-result)))))]
+    (swap! state #(assoc % :step-future future))
     state))
 
 (defn start-wait-for-git-step [state & {:keys [ref ms-between-polls] :or {ms-between-polls 100
                                                                           ref              "refs/heads/master"}}]
-  (let [complete-step-result-channel (async/go
-                                       (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
-                                                                                             (fn [_ ctx]
-                                                                                               (wait-for-git ctx (get-in @state [:git :remote]) :ref ref :ms-between-polls ms-between-polls)))]
-                                         (first (vals (:outputs execute-step-result)))))]
-    (swap! state #(assoc % :result-channel complete-step-result-channel))
-    (wait-for-step-waiting state)
-    state))
+  (execute-pipeline-step state (fn [_ ctx]
+                                 (wait-for-git ctx (get-in @state [:git :remote]) :ref ref :ms-between-polls ms-between-polls))))
+
 
 (defn start-clone-step [state ref cwd]
   (execute-pipeline-step state (fn [_ ctx]
@@ -117,9 +113,15 @@
   (reset! (:is-killed @state) true)
   state)
 
+(defn- throwing-timeout-dref [ref timeout]
+  (let [result (deref ref timeout :timeout)]
+    (if (= :timeout result)
+      (throw (TimeoutException. "timeout"))
+      result)))
+
 (defn get-step-result [state & {:keys [timeout] :or {timeout wait-for-step-finished}}]
   (try
-    (let [result (read-channel-or-time-out (:result-channel @state) :timeout timeout)]
+    (let [result (throwing-timeout-dref (:step-future @state) timeout)]
       (swap! state #(assoc % :step-result result))
       state)
     (catch Exception e
