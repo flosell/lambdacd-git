@@ -232,6 +232,7 @@
                     (git-init)
                     (git-commit "initial commit")
                     (git-checkout-b "some-branch")
+                    (git-commit "some commit on branch")
                     (git-checkout "master")
 
                     (start-wait-for-git-step :ref (fn [_] true))
@@ -241,12 +242,12 @@
 
                     (git-checkout "some-branch")
                     (start-wait-for-git-step :ref (fn [_] true))
-                    (git-commit "some commit on branch")
+                    (git-commit "some other commit on branch")
 
                     (get-step-result))]
       (is (= :success (:status (step-result state))))
-      (is (= (commit-hash-by-msg state "initial commit") (:old-revision (step-result state)))) ; FIXME: is this correct?
-      (is (= (commit-hash-by-msg state "some commit on branch") (:revision (step-result state))))
+      (is (= (commit-hash-by-msg state "some commit on branch") (:old-revision (step-result state))))
+      (is (= (commit-hash-by-msg state "some other commit on branch") (:revision (step-result state))))
       (is (str-containing (commit-hash-by-msg state "some commit on branch") (:out (step-result state))))))
   (testing "that it prints out information on old and new commit hashes"
     (let [state (-> (init-state)
