@@ -4,9 +4,9 @@
             [clojure.java.io :as io]
             [lambdacd-git.ssh-agent-support :as ssh-agent-support])
   (:import (org.eclipse.jgit.util FS)
-           (org.eclipse.jgit.transport JschConfigSessionFactory SshSessionFactory)
+           (org.eclipse.jgit.transport JschConfigSessionFactory SshSessionFactory OpenSshConfig$Host)
            (java.io SequenceInputStream File FileInputStream ByteArrayInputStream)
-           (com.jcraft.jsch JSch IdentityRepository Identity)
+           (com.jcraft.jsch JSch IdentityRepository Identity Session)
            (clojure.lang SeqEnumeration)
            (java.util Vector Collection)))
 
@@ -40,23 +40,33 @@
           (proxy [IdentityRepository] []
             (getIdentities [] (Vector. ^Collection (filter #(= (fs/expand-home identity-file) (.getName ^Identity %)) current)))))))))
 
+(defn set-strict-host-key-checking-customizer
+  "Explicitly set StrictHostKeyChecking parameter, overriding normal SSH configuration"
+  [setting]
+  (fn [^Session session]
+    (.setConfig session "StrictHostKeyChecking" setting)))
+
 (defn session-factory
   "Creates a SshSessionFactory that JGit can use to create Jsch instances.
   Takes customizer-functions that take a Jsch instances as an argument and modify it as a side-effect"
-  ^SshSessionFactory [customizer-fns]
+  ^SshSessionFactory
+  ([jsch-customizer-fns] ; DEPRECATAED
+   (session-factory jsch-customizer-fns []))
+  ([jsch-customizer-fns session-customizer-fns]
   (proxy [JschConfigSessionFactory] []
-    (configure [host session]
-      ; just to implement the interface
-      )
+    (configure [^OpenSshConfig$Host host ^Session session]
+      (doall (map #(% session) session-customizer-fns)))
     (createDefaultJSch [^FS fs]
       (let [jsch (proxy-super createDefaultJSch fs)]
-        (doall (map #(% jsch) customizer-fns))
-        jsch))))
+        (doall (map #(% jsch) jsch-customizer-fns))
+        jsch)))))
 
-(defn session-factory-for-config [{:keys [use-agent known-hosts-files identity-file]
+(defn session-factory-for-config [{:keys [use-agent known-hosts-files identity-file strict-host-key-checking]
                                    :or   {use-agent         true
                                           known-hosts-files ["~/.ssh/known_hosts" "/etc/ssh/ssh_known_hosts"]}}]
-  (let [customizer-fns (filter some? [(when use-agent ssh-agent-support/ssh-agent-customizer)
-                                      (when known-hosts-files (set-known-hosts-customizer known-hosts-files))
-                                      (when identity-file (set-identity-file-customizer identity-file))])]
-    (session-factory customizer-fns)))
+  (let [jsch-customizer-fns    (filter some? [(when use-agent ssh-agent-support/ssh-agent-customizer)
+                                              (when known-hosts-files (set-known-hosts-customizer known-hosts-files))
+                                              (when identity-file (set-identity-file-customizer identity-file))])
+        session-customizer-fns (filter some? [(when strict-host-key-checking (set-strict-host-key-checking-customizer strict-host-key-checking))])]
+    (session-factory jsch-customizer-fns
+                     session-customizer-fns)))

@@ -146,9 +146,11 @@ Certain values can be configured using LambdaCDs config-map. The following examp
 ```clojure
 (let [config  {:git {:timeout              20                               ; the timeout for remote operations in seconds
                      :credentials-provider (CredentialsProvider/getDefault) ; the credentials-provider to use for HTTPS clones (e.g. UsernamePasswordCredentialsProvider)
-               :ssh {:use-agent         true                                              ; whether to use an SSH agent
-                     :known-hosts-files ["~/.ssh/known_hosts" "/etc/ssh/ssh_known_hosts"] ; which known-hosts files to use for SSH connections 
-                     :identity-file     nil}}}]                                           ; override the normal SSH behavior and explicitly specify a key to use
+               :ssh {:use-agent                true                         ; whether to use an SSH agent
+                     :known-hosts-files        ["~/.ssh/known_hosts" 
+                                                "/etc/ssh/ssh_known_hosts"] ; which known-hosts files to use for SSH connections 
+                     :identity-file            nil                          ; override the normal SSH behavior and explicitly specify a key to use
+                     :strict-host-key-checking nil}}}]                      ; override the normal SSH behavior and explicitly set the StrictHostKeyChecking setting. Off by default, can be set to yes,no or ask
   (lambdacd/assemble-pipeline pipeline-structure config))
 ```
 

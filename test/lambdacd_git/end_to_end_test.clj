@@ -66,7 +66,8 @@
 
 (deftest ^:e2e-with-auth end-to-end-with-auth-test
   (testing "a complete pipeline with all features against private repositories using https and ssh"
-    (doseq [repo-config [{:repo-uri (or (System/getenv "LAMBDACD_GIT_TESTREPO_SSH") "git@gitlab.com:flosell-test/testrepo.git")}
+    (doseq [repo-config [{:repo-uri (or (System/getenv "LAMBDACD_GIT_TESTREPO_SSH") "git@gitlab.com:flosell-test/testrepo.git")
+                          :git {:ssh {:strict-host-key-checking "no"}}}
                          {:repo-uri (or (System/getenv "LAMBDACD_GIT_TESTREPO_HTTPS") "https://gitlab.com/flosell-test/testrepo.git")
                           :git      {:credentials-provider (UsernamePasswordCredentialsProvider. (System/getenv "LAMBDACD_GIT_TESTREPO_USERNAME")
                                                                                                  (System/getenv "LAMBDACD_GIT_TESTREPO_PASSWORD"))}}]]

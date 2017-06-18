@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## 0.3.0
 
+### Added 
+
+* Added configuration option for `StrictHostKeyChecking`. Overrides the default in `~/.ssh/config`
+
 ### Changed
 
 * Consolidated configuration (e.g. timeouts, ssh options, ...): lambdacd-git can now be configured through LambdaCDs config map and configuration can be overridden per call using function arguments.
@@ -20,6 +24,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 ### Deprecated
 
 * `lambdacd-git.core/init-ssh!` has been replaced by config via config-map (see above) and will be removed in future releases.
+* `lambdacd-git.ssh/session-factory [jsch-customizer-fns]` now also receives `session-customizer-fns`; the single argument function will be removed in future releases
 
 ### Removed
 
