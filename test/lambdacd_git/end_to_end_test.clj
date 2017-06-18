@@ -89,10 +89,10 @@
 (defmacro expect-failure [state]
   `(expect-status ~state :failure))
 
-(defn- init-ssh [state]
+(defn- init-ssh [state k v]
   (let [existing-session-factory (SshSessionFactory/getInstance)]
     (swap! state #(assoc % :existing-session-factory existing-session-factory))
-    (core/init-ssh!)
+    (core/init-ssh! k v)
     state))
 
 (defn- reset-init-ssh [state]
@@ -137,10 +137,10 @@
 (deftest ^:e2e-with-auth backwards-compatibility-test
   (testing "that git operations on ssh fail if init-ssh was called and ssh config was also given"
     (-> (init-state :config {:repo-uri (or (System/getenv "LAMBDACD_GIT_TESTREPO_SSH") "git@gitlab.com:flosell-test/testrepo.git")
-                             :git      {:ssh {:strict-host-key-checking "no"}}
+                             :git      {:ssh {:strict-host-key-checking "yes"}}
                              :home-dir (lambdacd-util/create-temp-dir)}
                     :pipeline-structure pipeline-structure)
-        (init-ssh)
+        (init-ssh :strict-host-key-checking "no")
         (start-pipeline)
         (trigger-manually)
         (wait-for-completion)
@@ -152,7 +152,7 @@
     (-> (init-state :config {:repo-uri (or (System/getenv "LAMBDACD_GIT_TESTREPO_SSH") "git@gitlab.com:flosell-test/testrepo.git")
                              :home-dir (lambdacd-util/create-temp-dir)}
                     :pipeline-structure pipeline-structure)
-        (init-ssh)
+        (init-ssh :strict-host-key-checking "no")
         (start-pipeline)
         (trigger-manually)
         (wait-for-completion)

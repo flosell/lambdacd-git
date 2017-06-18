@@ -43,7 +43,8 @@
       (when (instance? SshTransport transport)
         (when (configuration-clashes-with-init-ssh? ssh-config)
           (throw (Exception. ssh-config-clash-msg)))
-        (.setSshSessionFactory transport (ssh/session-factory-for-config ssh-config))))))
+        (when (not @ssh/init-ssh-called?)
+          (.setSshSessionFactory transport (ssh/session-factory-for-config ssh-config)))))))
 
 (defn- set-transport-opts [^TransportCommand transport-command {:keys [timeout ^CredentialsProvider credentials-provider ssh]
                                                                 :or   {timeout              20
