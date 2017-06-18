@@ -41,6 +41,15 @@ release() {
   test && lein release && scripts/github-release.sh
 }
 
+clean-up-testrepo() {
+  tmp_dir=$(mktemp -d)
+  git clone git@gitlab.com:flosell-test/testrepo.git "${tmp_dir}"
+  pushd "${tmp_dir}" > /dev/null
+    git tag -l | xargs -n 10 git push --delete origin
+  popd > /dev/null
+  rm -rf "${tmp_dir}"
+}
+
 function run() {
   if [ -z $1 ]; then
     lein run
@@ -56,11 +65,12 @@ else
     echo "usage: $0 <goal>
 
 goal:
-    test           -- run all tests
-    push           -- run all tests and push current state
-    run            -- run the simple sample pipeline
-    run multi-repo -- run the multi-repo sample pipeline
-    release         -- release current version"
+    test               -- run all tests
+    clean-up-testrepo  -- clean up temporary data left behind in by end-to-end tests in test-repo
+    push               -- run all tests and push current state
+    run                -- run the simple sample pipeline
+    run multi-repo     -- run the multi-repo sample pipeline
+    release            -- release current version"
 
     exit 1
 fi
