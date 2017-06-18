@@ -1,7 +1,8 @@
 (ns lambdacd-git.git
   (:require [clojure.java.io :as io]
             [lambdacd-git.ssh :as ssh]
-            [lambdacd-git.ssh-agent-support :as ssh-agent-support])
+            [lambdacd-git.ssh-agent-support :as ssh-agent-support]
+            [clojure.string :as string])
   (:import (org.eclipse.jgit.api Git TransportCommand TransportConfigCallback)
            (org.eclipse.jgit.lib Ref TextProgressMonitor)
            (org.eclipse.jgit.revwalk RevCommit RevWalk)
@@ -24,10 +25,24 @@
 (defn- entry-to-ref-and-hash [entry]
   [(key entry) (ref->hash (val entry))])
 
+(defn- configuration-clashes-with-init-ssh? [ssh-config]
+  (and @ssh/init-ssh-called?
+       (not (empty? ssh-config))))
+
+(def ssh-config-clash-msg
+  (string/join "\n"
+               [""
+                "***** SSH CONFIGURATION CLASHES! *****"
+                "You likely called init-ssh! and supplied ssh configuration to the config-map at the same time."
+                "Migrate all configuration from init-ssh! to the config-map to resolve this error. See the lambdacd-git changelog for details."
+                ""]))
+
 (defn- transport-config-callback ^TransportConfigCallback [ssh-config]
   (reify TransportConfigCallback
     (configure [this transport]
       (when (instance? SshTransport transport)
+        (when (configuration-clashes-with-init-ssh? ssh-config)
+          (throw (Exception. ssh-config-clash-msg)))
         (.setSshSessionFactory transport (ssh/session-factory-for-config ssh-config))))))
 
 (defn- set-transport-opts [^TransportCommand transport-command {:keys [timeout ^CredentialsProvider credentials-provider ssh]

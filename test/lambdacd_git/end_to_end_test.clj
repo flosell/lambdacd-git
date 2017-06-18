@@ -10,8 +10,9 @@
             [lambdacd.steps.shell :as shell]
             [lambdacd-git.test-utils :as test-utils]
             [lambdacd.steps.control-flow :refer [either with-workspace]]
-            [lambdacd.steps.manualtrigger :refer [wait-for-manual-trigger]])
-  (:import (org.eclipse.jgit.transport CredentialsProvider UsernamePasswordCredentialsProvider)))
+            [lambdacd.steps.manualtrigger :refer [wait-for-manual-trigger]]
+            [lambdacd-git.ssh :as ssh])
+  (:import (org.eclipse.jgit.transport CredentialsProvider UsernamePasswordCredentialsProvider SshSessionFactory)))
 
 (defn match-all-refs [_]
   true)
@@ -76,11 +77,30 @@
   (pipeline-result state)
   state)
 
-(defmacro expect-success [state]
+(defmacro expect-status [state status]
   ; macro is inlined, therefore convinces cursive to mark the call location of the check as failed, not the implementation
   `(let [pipeline-result# (pipeline-result ~state)]
-     (is (= :success (:status pipeline-result#)) (str "No success in " pipeline-result#))
+     (is (= ~status (:status pipeline-result#)) (str "No success in " pipeline-result#))
      ~state))
+
+(defmacro expect-success [state]
+  `(expect-status ~state :success))
+
+(defmacro expect-failure [state]
+  `(expect-status ~state :failure))
+
+(defn- init-ssh [state]
+  (let [existing-session-factory (SshSessionFactory/getInstance)]
+    (swap! state #(assoc % :existing-session-factory existing-session-factory))
+    (core/init-ssh!)
+    state))
+
+(defn- reset-init-ssh [state]
+  (let [existing-session-factory (:existing-session-factory @state)]
+    (SshSessionFactory/setInstance existing-session-factory)
+    (swap! state #(dissoc % :existing-session-factory))
+    (reset! ssh/init-ssh-called? false)
+    state))
 
 ; ======================================================================================================================
 
@@ -114,3 +134,29 @@
 
             (expect-success))))))
 
+(deftest ^:e2e-with-auth backwards-compatibility-test
+  (testing "that git operations on ssh fail if init-ssh was called and ssh config was also given"
+    (-> (init-state :config {:repo-uri (or (System/getenv "LAMBDACD_GIT_TESTREPO_SSH") "git@gitlab.com:flosell-test/testrepo.git")
+                             :git      {:ssh {:strict-host-key-checking "no"}}
+                             :home-dir (lambdacd-util/create-temp-dir)}
+                    :pipeline-structure pipeline-structure)
+        (init-ssh)
+        (start-pipeline)
+        (trigger-manually)
+        (wait-for-completion)
+
+        (expect-failure)
+
+        (reset-init-ssh)))
+  (testing "that git operations on ssh don't fail if no ssh config was given"
+    (-> (init-state :config {:repo-uri (or (System/getenv "LAMBDACD_GIT_TESTREPO_SSH") "git@gitlab.com:flosell-test/testrepo.git")
+                             :home-dir (lambdacd-util/create-temp-dir)}
+                    :pipeline-structure pipeline-structure)
+        (init-ssh)
+        (start-pipeline)
+        (trigger-manually)
+        (wait-for-completion)
+
+        (expect-success)
+
+        (reset-init-ssh))))

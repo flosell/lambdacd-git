@@ -15,6 +15,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
   
   Configuration (e.g. timeouts) that were previously only possible for some functions are now available throughout. SSH config that could previously only be defined for the whole JVM can now be configured per pipeline (through the config map) and even per step (through function parameters).
   
+  Using the config map and `init-ssh!` at the same time will result in runtime errors so make sure you migrate configuration and remove calls to `init-ssh!.`
+  
   See README for details
 * Breaking changes in utility namespace `lambdacd-git.git`: Removed keyword arguments and replaced them with an optional options-map in the following functions:
   * `lambdacd-git.git/current-revisions`

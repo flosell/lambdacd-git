@@ -216,7 +216,8 @@
   (compojure/POST "/notify-git" request (notify-git-handler (:context pipeline) request)))
 
 (defn ^:deprecated init-ssh! [& {:as config}]
-  (SshSessionFactory/setInstance (ssh/session-factory-for-config config)))
+  (SshSessionFactory/setInstance (ssh/session-factory-for-config config))
+  (reset! ssh/init-ssh-called? true))
 
 (defn tag-version [ctx cwd repo revision tag & {:as custom-git-config}]
   (support/capture-output ctx

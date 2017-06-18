@@ -70,3 +70,5 @@
         session-customizer-fns (filter some? [(when strict-host-key-checking (set-strict-host-key-checking-customizer strict-host-key-checking))])]
     (session-factory jsch-customizer-fns
                      session-customizer-fns)))
+
+(def init-ssh-called? (atom false))
