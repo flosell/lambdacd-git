@@ -1,10 +1,10 @@
 (def lambdacd-version (or
                         (System/getenv "LAMBDACD_VERSION")
-                        "0.12.1"))
+                        "0.13.5"))
 
 (println "Building against LambdaCD version" lambdacd-version)
 
-(defproject lambdacd-git "0.3.1-SNAPSHOT"
+(defproject lambdacd-git "0.4.0-SNAPSHOT"
   :description "Git support for LambdaCD"
   :url "https://github.com/flosell/lambdacd-git"
   :license {:name "Apache License, version 2.0"
