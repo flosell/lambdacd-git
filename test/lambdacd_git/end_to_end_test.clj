@@ -2,7 +2,6 @@
   (:require [clojure.test :refer :all]
             [lambdacd-git.core :as core]
             [lambdacd.core :as lambdacd]
-            [lambdacd.util :as lambdacd-util]
             [lambdacd.state.core :as lambdacd-state]
             [lambdacd.execution :as lambdacd-execution]
             [lambdacd-git.example.simple-pipeline :as simple-pipeline]
@@ -12,7 +11,7 @@
             [lambdacd.steps.control-flow :refer [either with-workspace]]
             [lambdacd.steps.manualtrigger :refer [wait-for-manual-trigger]]
             [lambdacd-git.ssh :as ssh])
-  (:import (org.eclipse.jgit.transport CredentialsProvider UsernamePasswordCredentialsProvider SshSessionFactory)))
+  (:import (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider SshSessionFactory)))
 
 (defn match-all-refs [_]
   true)
@@ -106,7 +105,7 @@
 
 (deftest example-pipeline-test
   (testing "the example-pipeline"
-    (-> (init-state :config {:home-dir (lambdacd-util/create-temp-dir)}
+    (-> (init-state :config {:home-dir (test-utils/create-temp-dir)}
                     :pipeline-structure simple-pipeline/pipeline-structure)
         (start-pipeline)
         (trigger-manually)
@@ -121,7 +120,7 @@
                           :git      {:credentials-provider (UsernamePasswordCredentialsProvider. (System/getenv "LAMBDACD_GIT_TESTREPO_USERNAME")
                                                                                                  (System/getenv "LAMBDACD_GIT_TESTREPO_PASSWORD"))}}]]
       (testing (:repo-uri repo-config)
-        (-> (init-state :config (assoc repo-config :home-dir (lambdacd-util/create-temp-dir))
+        (-> (init-state :config (assoc repo-config :home-dir (test-utils/create-temp-dir))
                         :pipeline-structure pipeline-structure)
             (start-pipeline)
             (trigger-manually)
@@ -138,7 +137,7 @@
   (testing "that git operations on ssh fail if init-ssh was called and ssh config was also given"
     (-> (init-state :config {:repo-uri (or (System/getenv "LAMBDACD_GIT_TESTREPO_SSH") "git@gitlab.com:flosell-test/testrepo.git")
                              :git      {:ssh {:strict-host-key-checking "yes"}}
-                             :home-dir (lambdacd-util/create-temp-dir)}
+                             :home-dir (test-utils/create-temp-dir)}
                     :pipeline-structure pipeline-structure)
         (init-ssh :strict-host-key-checking "no")
         (start-pipeline)
@@ -150,7 +149,7 @@
         (reset-init-ssh)))
   (testing "that git operations on ssh don't fail if no ssh config was given"
     (-> (init-state :config {:repo-uri (or (System/getenv "LAMBDACD_GIT_TESTREPO_SSH") "git@gitlab.com:flosell-test/testrepo.git")
-                             :home-dir (lambdacd-util/create-temp-dir)}
+                             :home-dir (test-utils/create-temp-dir)}
                     :pipeline-structure pipeline-structure)
         (init-ssh :strict-host-key-checking "no")
         (start-pipeline)

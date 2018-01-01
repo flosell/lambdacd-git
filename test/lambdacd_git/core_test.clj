@@ -8,7 +8,6 @@
             [lambdacd-git.test-utils :refer [str-containing some-ctx-with]]
             [lambdacd.core :as lambdacd-core]
             [lambdacd.presentation.pipeline-state :as presentation-state]
-            [lambdacd.util :as util]
             [clojure.java.io :as io]
             [lambdacd.event-bus :as event-bus]
             [ring.mock.request :as ring-mock]
@@ -344,7 +343,7 @@
 (deftest clone-test
   (testing "that we can clone a specific commit"
     (let [state (init-state)
-          workspace (util/create-temp-dir)]
+          workspace (test-utils/create-temp-dir)]
       (-> state
           (git-init)
           (git-add-file "some-file" "some content")
@@ -358,7 +357,7 @@
              (slurp (io/file workspace "some-file"))))))
   (testing "that it falls back to head of master if ref is nil (e.g. because manual trigger instead of wait-for-git)"
     (let [state (init-state)
-          workspace (util/create-temp-dir)]
+          workspace (test-utils/create-temp-dir)]
       (-> state
           (git-init)
           (git-add-file "some-file" "some content")
@@ -372,7 +371,7 @@
              (slurp (io/file workspace "some-file"))))))
   (testing "that we can get information on the progress of a clone"
     (let [state (init-state)
-          workspace (util/create-temp-dir)]
+          workspace (test-utils/create-temp-dir)]
       (-> state
           (git-init)
           (git-add-file "some-file" "some content")
@@ -382,7 +381,7 @@
       (is (str-containing "Receiving" (:out (step-result state))))))
   (testing "that we get a proper error if a commit cant be found"
     (let [state (init-state)
-          workspace (util/create-temp-dir)]
+          workspace (test-utils/create-temp-dir)]
       (-> state
           (git-init)
           (git-add-file "some-file" "some content")
@@ -395,7 +394,7 @@
 (deftest list-changes-test
   (testing "normal behavior"
     (let [state (init-state)
-          workspace (util/create-temp-dir)]
+          workspace (test-utils/create-temp-dir)]
       (-> state
           (git-init)
           (git-commit "first commit")
@@ -437,7 +436,7 @@
         (is (= :failure (:status (step-result state))))))
     (testing "that an error is reported if no git repo is found in cwd"
       (let [state (init-state)
-            workspace (util/create-temp-dir)]
+            workspace (test-utils/create-temp-dir)]
         (-> state
             (start-list-changes-step workspace "some hash" "some other hash")
             (get-step-result))
@@ -445,7 +444,7 @@
         (is (= :failure (:status (step-result state))))))
     (testing "that the current head commit will be reported if no old and new revisions are set"
       (let [state (init-state)
-            workspace (util/create-temp-dir)]
+            workspace (test-utils/create-temp-dir)]
         (-> state
             (git-init)
             (git-commit "some commit")
@@ -484,7 +483,7 @@
         (is (= :failure (:status (step-result state))))))
     (testing "that an error is reported if no git repo is found in cwd"
       (let [state       (init-state)
-            workspace (util/create-temp-dir)]
+            workspace (test-utils/create-temp-dir)]
         (-> state
           (start-tag-version-step workspace "some-uri" "some-commit" "some-tag")
           (get-step-result))

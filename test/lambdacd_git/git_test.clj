@@ -4,9 +4,9 @@
                                             git-checkout commit-by-msg git-tag git-tag-list git-user-name
                                             git-user-email commit-timestamp-date get-last-commit-msg]]
             [lambdacd-git.git :refer :all]
-            [lambdacd.util :as util]
             [lambdacd-git.test-utils :refer [str-containing]]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [lambdacd-git.test-utils :as test-utils])
   (:import (org.eclipse.jgit.api Git)))
 
 (defn git-from-dir [git-dir]
@@ -59,7 +59,7 @@
     (let [git-handle (-> (git-init)
                          (git-add-file "some-file" "some content")
                          (git-commit "some commit on master"))
-          workspace (util/create-temp-dir)]
+          workspace (test-utils/create-temp-dir)]
       (clone-repo (:remote git-handle) workspace {})
       (is (= "some content"
              (slurp (io/file workspace "some-file")))))))
