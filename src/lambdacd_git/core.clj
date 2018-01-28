@@ -1,7 +1,6 @@
 (ns lambdacd-git.core
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [lambdacd.steps.support :as support]
             [lambdacd.presentation.pipeline-state :as pipeline-state]
             [lambdacd-git.git :as git]
             [clojure.data :refer [diff]]
@@ -11,12 +10,13 @@
             [ring.middleware.params :as ring-params]
             [ring.util.response :as ring-response]
             [compojure.core :as compojure]
-            [lambdacd-git.ssh :as ssh])
+            [lambdacd-git.ssh :as ssh]
+            [lambdacd.stepsupport.killable :as killable]
+            [lambdacd.stepsupport.output :as output])
   (:import (java.util.regex Pattern)
            (java.util Date)
            (java.text SimpleDateFormat)
-           (org.eclipse.jgit.transport SshSessionFactory)
-           (clojure.lang SeqEnumeration)))
+           (org.eclipse.jgit.transport SshSessionFactory)))
 
 (defn- find-changed-revision [old-revisions new-revisions]
   (let [[_ new-entries _] (diff old-revisions new-revisions)
@@ -79,7 +79,7 @@
   (println "Last seen revisions:" (or last-seen-revisions "None") ". Waiting for new commit...")
   (let [kill-channel (kill-switch->ch ctx)
         result       (loop [last-seen-revisions last-seen-revisions]
-                       (support/if-not-killed ctx
+                       (killable/if-not-killed ctx
                          (let [current-revisions (current-revision-or-nil remote ref git-config)]
                            (if (and
                                  (not (nil? current-revisions))
@@ -133,7 +133,7 @@
                  :as   custom-git-config-and-params
                  :or   {ms-between-polls (* 10 1000)
                         ref              "refs/heads/master"}}]
-  (support/capture-output ctx
+  (output/capture-output ctx
     (let [ref-pred                  (to-ref-pred ref)
           git-config                (git-config ctx custom-git-config-and-params)
           initial-revisions         (initial-revisions ctx remote ref-pred git-config)
@@ -151,7 +151,7 @@
   Takes the steps ctx, a repository uri and ref to clone and a working directory to clone into.
   Takes optional custom git-config settings."
   [ctx repo ref cwd & {:as custom-git-config}]
-  (support/capture-output ctx
+  (output/capture-output ctx
     (let [ref          (or ref "master")
           git          (git/clone-repo repo cwd (git-config ctx custom-git-config))
           existing-ref (git/find-ref git ref)]
@@ -183,7 +183,7 @@
   (not (.exists (io/file cwd ".git"))))
 
 (defn list-changes [args ctx]
-  (support/capture-output ctx
+  (output/capture-output ctx
     (let [old-revision (:old-revision args)
           new-revision (:revision args)
           cwd          (:cwd args)]
@@ -220,7 +220,7 @@
   (reset! ssh/init-ssh-called? true))
 
 (defn tag-version [ctx cwd repo revision tag & {:as custom-git-config}]
-  (support/capture-output ctx
+  (output/capture-output ctx
     (let [rev (or revision "HEAD")]
       (cond
         (nil? cwd) (failure "No working directory (:cwd) defined. Did you clone the repository?")
