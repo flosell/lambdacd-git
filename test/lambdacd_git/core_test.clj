@@ -6,12 +6,12 @@
             [lambdacd.state.internal.pipeline-state-updater :as pipeline-state-updater]
             [lambdacd.state.core :as state-core]
             [lambdacd-git.test-utils :refer [str-containing some-ctx-with]]
-            [lambdacd.core :as lambdacd-core]
             [lambdacd.presentation.pipeline-state :as presentation-state]
             [clojure.java.io :as io]
             [lambdacd.event-bus :as event-bus]
             [ring.mock.request :as ring-mock]
-            [lambdacd-git.test-utils :as test-utils])
+            [lambdacd-git.test-utils :as test-utils]
+            [lambdacd.execution.core :as execution-core])
   (:import (java.util.concurrent TimeoutException)))
 
 (defmacro flaky-testing [title & body]
@@ -93,8 +93,8 @@
 (defn execute-pipeline-step [state step]
   (clear-channel (:step-status-channel @state))
   (let [future (future
-                 (let [execute-step-result (lambdacd-core/execute-step {} (:ctx @state)
-                                                                       step)]
+                 (let [execute-step-result (execution-core/execute-step {} (:ctx @state)
+                                                                        step)]
                    (first (vals (:outputs execute-step-result)))))]
     (swap! state #(assoc % :step-future future))
     state))
