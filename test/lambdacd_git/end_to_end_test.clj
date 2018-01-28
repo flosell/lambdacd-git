@@ -3,14 +3,14 @@
             [lambdacd-git.core :as core]
             [lambdacd.core :as lambdacd]
             [lambdacd.state.core :as lambdacd-state]
-            [lambdacd.execution :as lambdacd-execution]
             [lambdacd-git.example.simple-pipeline :as simple-pipeline]
             [lambdacd.steps.manualtrigger :as manualtrigger]
             [lambdacd.steps.shell :as shell]
             [lambdacd-git.test-utils :as test-utils]
             [lambdacd.steps.control-flow :refer [either with-workspace]]
             [lambdacd.steps.manualtrigger :refer [wait-for-manual-trigger]]
-            [lambdacd-git.ssh :as ssh])
+            [lambdacd-git.ssh :as ssh]
+            [lambdacd.execution.core :as execution-core])
   (:import (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider SshSessionFactory)))
 
 (defn match-all-refs [_]
@@ -62,7 +62,7 @@
         ctx                (:context (:pipeline @state))]
     (swap! state #(assoc % :future-pipeline-result
                            (future
-                             (lambdacd-execution/run pipeline-structure ctx)))))
+                             (execution-core/run-pipeline pipeline-structure ctx)))))
   state)
 
 (defn- trigger-manually [state]
