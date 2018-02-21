@@ -6,7 +6,7 @@
   (:import (org.eclipse.jgit.util FS)
            (org.eclipse.jgit.transport JschConfigSessionFactory SshSessionFactory OpenSshConfig$Host)
            (java.io SequenceInputStream File FileInputStream ByteArrayInputStream)
-           (com.jcraft.jsch JSch IdentityRepository Identity Session)
+           (com.jcraft.jsch JSch JSchException IdentityRepository Identity Session)
            (clojure.lang SeqEnumeration)
            (java.util Vector Collection)))
 
@@ -34,11 +34,15 @@
    with permissions to a private repo."
   [identity-file]
   (fn [^JSch jsch]
-    (let [current (.getIdentities (.getIdentityRepository jsch))]
-      (doto jsch
-        (.setIdentityRepository
-          (proxy [IdentityRepository] []
-            (getIdentities [] (Vector. ^Collection (filter #(= (fs/expand-home identity-file) (.getName ^Identity %)) current)))))))))
+    (let [identity-file-full-path (fs/expand-home identity-file)]
+      (try
+        (.addIdentity jsch identity-file-full-path)
+        (catch JSchException e :ignore))
+      (let [current (.getIdentities (.getIdentityRepository jsch))]
+        (doto jsch
+          (.setIdentityRepository
+           (proxy [IdentityRepository] []
+             (getIdentities [] (Vector. ^Collection (filter #(= identity-file-full-path (.getName ^Identity %)) current))))))))))
 
 (defn set-strict-host-key-checking-customizer
   "Explicitly set StrictHostKeyChecking parameter, overriding normal SSH configuration"
