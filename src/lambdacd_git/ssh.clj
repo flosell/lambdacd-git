@@ -34,7 +34,7 @@
    with permissions to a private repo."
   [identity-file]
   (fn [^JSch jsch]
-    (let [identity-file-full-path (fs/expand-home identity-file)]
+    (let [identity-file-full-path (str (fs/expand-home identity-file))]
       (try
         (.addIdentity jsch identity-file-full-path)
         (catch JSchException e :ignore))
