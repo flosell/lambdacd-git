@@ -2,6 +2,7 @@
   "Functions to customize handling of SSH connections"
   (:require [me.raynes.fs :as fs]
             [clojure.java.io :as io]
+            [clojure.tools.logging :as log]
             [lambdacd-git.ssh-agent-support :as ssh-agent-support])
   (:import (org.eclipse.jgit.util FS)
            (org.eclipse.jgit.transport JschConfigSessionFactory SshSessionFactory OpenSshConfig$Host)
@@ -37,7 +38,8 @@
     (let [identity-file-full-path (str (fs/expand-home identity-file))]
       (try
         (.addIdentity jsch identity-file-full-path)
-        (catch JSchException e :ignore))
+        (catch JSchException e
+          (log/warn e "Problems adding custom identity file.")))
       (let [current (.getIdentities (.getIdentityRepository jsch))]
         (doto jsch
           (.setIdentityRepository
