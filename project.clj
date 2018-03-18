@@ -2,14 +2,18 @@
                         (System/getenv "LAMBDACD_VERSION")
                         "0.13.5"))
 
-(println "Building against LambdaCD version" lambdacd-version)
+(def clojure-version-to-use (or
+                              (System/getenv "CLOJURE_VERSION")
+                              "1.7.0"))
+
+(println "Building against LambdaCD version" lambdacd-version "and clojure" clojure-version-to-use)
 
 (defproject lambdacd-git "0.4.1-SNAPSHOT"
   :description "Git support for LambdaCD"
   :url "https://github.com/flosell/lambdacd-git"
   :license {:name "Apache License, version 2.0"
             :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
-  :dependencies [[org.clojure/clojure "1.7.0"]
+  :dependencies [[org.clojure/clojure ~clojure-version-to-use]
                  [org.eclipse.jgit/org.eclipse.jgit "4.1.1.201511131810-r"]
                  [com.jcraft/jsch.agentproxy.jsch "0.0.8"]
                  [com.jcraft/jsch.agentproxy.usocket-jna "0.0.8"]
