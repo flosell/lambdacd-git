@@ -19,4 +19,5 @@ else
 Host gitlab.com
   IdentityFile ~/.ssh/id_rsa_gitlab-test
 EOF
+  chmod 400 ~/.ssh/id_rsa_gitlab-test
 fi
