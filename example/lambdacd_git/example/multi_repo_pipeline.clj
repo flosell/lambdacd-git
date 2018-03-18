@@ -5,7 +5,7 @@
             [lambdacd.steps.control-flow :refer [either with-workspace in-parallel run]]
             [lambdacd.core :as lambdacd]
             [ring.server.standalone :as ring-server]
-            [lambdacd.ui.ui-server :as ui]
+            [lambdacd.ui.core :as ui]
             [lambdacd-git.core :as core]
             [lambdacd.runners :as runners]
             [lambdacd-git.test-utils :as test-utils]))
