@@ -20,7 +20,7 @@
                  [com.jcraft/jsch.agentproxy.sshagent "0.0.8"]
                  [me.raynes/conch "0.8.0"]
                  [lambdacd ~lambdacd-version]
-                 [ring/ring-core "1.2.2"]]
+                 [ring/ring-core "1.6.3"]]
   :repositories {"jgit-repository" "https://repo.eclipse.org/content/groups/releases/"}
   :deploy-repositories [["clojars" {:creds :gpg}]
                         ["releases" :clojars]]
@@ -28,7 +28,7 @@
   :test-selectors {:default (constantly true)
                    :skip-e2e-with-auth (complement :e2e-with-auth)}
   :profiles {:dev      {:main         lambdacd-git.example.simple-pipeline
-                        :dependencies [[compojure "1.1.8"]
-                                       [ring-server "0.3.1"]
+                        :dependencies [[compojure "1.6.0"]
+                                       [ring-server "0.4.0"]
                                        [ring/ring-mock "0.2.0"]]}
              :silent   {:jvm-opts ["-Dlogback.configurationFile=./dev-resources/logback-silent.xml"]}})

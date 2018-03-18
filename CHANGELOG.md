@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 * The `:ssh :identity-file` configuration can now load any file as an identity file.
 
   Prior to this change it would only load `id_rsa`, `id_dsa` and `identity` in `~/.ssh`.
+* Support for Clojure 1.9
+
 
 ## 0.4.0
 
