@@ -12,7 +12,7 @@ create-testrepo() {
   git add hello
   git commit -m "initializing"
   git push origin master
-
+  cd -
 }
 
 delete-testrepo() {
