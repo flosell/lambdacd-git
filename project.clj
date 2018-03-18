@@ -8,7 +8,7 @@
 
 (println "Building against LambdaCD version" lambdacd-version "and clojure" clojure-version-to-use)
 
-(defproject lambdacd-git "0.4.1-SNAPSHOT"
+(defproject lambdacd-git "0.4.1"
   :description "Git support for LambdaCD"
   :url "https://github.com/flosell/lambdacd-git"
   :license {:name "Apache License, version 2.0"
