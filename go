@@ -45,7 +45,7 @@ clean-up-testrepo() {
   tmp_dir=$(mktemp -d)
   git clone git@gitlab.com:flosell-test/testrepo.git "${tmp_dir}"
   pushd "${tmp_dir}" > /dev/null
-    git tag -l | xargs -n 10 git push --delete origin
+    git tag -l | xargs -n 50 git push --delete origin
   popd > /dev/null
   rm -rf "${tmp_dir}"
 }
