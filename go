@@ -3,6 +3,23 @@ set -e
 
 SILENT="true"
 
+create-testrepo() {
+  curl -sSf -H 'Private-Token: 9PLYdwG7ZXhz2zzUKoCe' --output /dev/null -XPOST "https://gitlab.com/api/v4/projects?name=${TESTREPO_NAME}"
+  tmpdir=$(mktemp -d)
+  git clone "${LAMBDACD_GIT_TESTREPO_SSH}"
+  cd "${TESTREPO_NAME}"
+  touch hello
+  git add hello
+  git commit -m "initializing"
+  git push origin master
+
+}
+
+delete-testrepo() {
+  rm -rf "${TESTREPO_NAME}"
+  curl -sSf -H "Private-Token: ${LAMBDACD_GIT_TESTREPO_PASSWORD}" --output /dev/null -XDELETE "https://gitlab.com/api/v4/projects/${TESTREPO_PATH}"
+}
+
 test() {
   CMD="lein"
 
@@ -28,6 +45,17 @@ test() {
     echo
 
     CMD="${CMD} :skip-e2e-with-auth"
+  fi
+
+  if [ -n "${TRAVIS_JOB_NUMBER}" ]; then
+    TESTREPO_NAME="testrepo-$(echo "${TRAVIS_JOB_NUMBER}" | sed -e 's/\./-/g')"
+    TESTREPO_PATH="flosell-test%2F${TESTREPO_NAME}"
+
+    export LAMBDACD_GIT_TESTREPO_SSH="git@gitlab.com:flosell-test/${TESTREPO_NAME}.git"
+    export LAMBDACD_GIT_TESTREPO_HTTPS="https://gitlab.com/flosell-test/${TESTREPO_NAME}.git"
+
+    trap delete-testrepo EXIT
+    create-testrepo
   fi
 
   ${CMD}
