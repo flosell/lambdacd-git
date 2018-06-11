@@ -4,7 +4,7 @@ set -e
 SILENT="true"
 
 create-testrepo() {
-  curl -sSf -H 'Private-Token: 9PLYdwG7ZXhz2zzUKoCe' --output /dev/null -XPOST "https://gitlab.com/api/v4/projects?name=${TESTREPO_NAME}"
+  curl -sSf -H "Private-Token: ${LAMBDACD_GIT_TESTREPO_PASSWORD}" --output /dev/null -XPOST "https://gitlab.com/api/v4/projects?name=${TESTREPO_NAME}"
   tmpdir=$(mktemp -d)
   git clone "${LAMBDACD_GIT_TESTREPO_SSH}"
   cd "${TESTREPO_NAME}"
