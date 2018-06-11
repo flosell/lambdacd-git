@@ -59,6 +59,8 @@ to your existing ring-handlers:
 This adds an HTTP endpoint that can receive POST requests on `<host>/notify-git?remote=<remote>`,
 e.g. `http://localhost:8082/notify-git?remote=git@github.com:flosell/testrepo`
 
+Notice that this doesn't necessarily trigger a new build. Similar to [how Jenkins works](https://wiki.jenkins.io/display/JENKINS/Git+Plugin#GitPlugin-Pushnotificationfromrepository), a notification just forces a check for changes.
+
 ### Cloning a Repository
 
 ```clojure
